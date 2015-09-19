@@ -27,6 +27,10 @@
 #include "floatToString.h"
 #include "OneWire.h"
 #include "DallasTemperature.h"
+#include <LiquidCrystal.h>
+
+// initialize the library with the numbers of the interface pins
+LiquidCrystal lcd(2, 3, 4, 5, 6, 7, 8);
 
 #define ONE_WIRE_BUS 2
 
@@ -60,6 +64,8 @@ setup ()
     {
       ; // wait for serial port to connect. Needed for Leonardo only
     }
+
+  lcd.begin(20, 4);
 
   // Begrüßungstext auf seriellem Monitor ausgeben
   Serial.println ("Starte Datum und Zeit");
