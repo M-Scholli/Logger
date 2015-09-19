@@ -25,6 +25,14 @@
 #include <Wire.h>    // I2C-Bibliothek einbinden
 #include "RTClib.h"  // RTC-Bibliothek einbinden
 #include "floatToString.h"
+#include "OneWire.h"
+#include "DallasTemperature.h"
+
+#define ONE_WIRE_BUS 2
+
+OneWire ourWire(ONE_WIRE_BUS); /* Ini oneWire instance */
+
+DallasTemperature sensors(&ourWire);/* Dallas Temperature Library für Nutzung der oneWire Library vorbereiten */
 
 RTC_DS1307 RTC;      // RTC Modul
 
@@ -110,8 +118,13 @@ setup ()
       while (1)
 	;
     }
+
+  sensors.begin();
+
+  adresseAusgeben(); /* Adresse der Devices ausgeben */
+
   dataFile.println ("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3");
-  dataFile.println ("dd.mm.yyyy;hh.mm.ss;Grad C;Sensor2;Sensor3");
+  dataFile.println ("dd.mm.yyyy;hh.mm.ss;°C;Sensor2;Sensor3");
 }
 
 void
@@ -147,8 +160,15 @@ loop ()
   // SD card is filled with data.
   dataFile.flush ();
 
+ sensors.requestTemperatures(); // Temperatursensor(en) auslesen
+
+ for(byte i=0;i<sensors.getDeviceCount();i++){ // Temperatur ausgeben
+
+ show_temperature(i+1,sensors.getTempCByIndex(i));
+ }
+
   // Take 1 measurement every 500 milliseconds
-  delay (2000);
+  delay (6000);
 }
 
 //Messe Temp. 0V=0gradC 5V=100gradC
@@ -254,4 +274,45 @@ show_time_and_date (DateTime datetime)
   if (datetime.second () < 10)
     Serial.print (0);
   Serial.println (datetime.second (), DEC);
+}
+
+void adresseAusgeben(void) {
+  byte i;
+  byte present = 0;
+  byte data[12];
+  byte addr[8];
+
+  Serial.print("Suche 1-Wire-Devices...");// "\n\r" is NewLine
+  while(ourWire.search(addr)) {
+    Serial.print("\n\r1-Wire-Device gefunden mit Adresse:\n\r");
+    for( i = 0; i < 8; i++) {
+      Serial.print("0x");
+      if (addr[i] < 16) {
+        Serial.print('0');
+      }
+      Serial.print(addr[i], HEX);
+      if (i < 7) {
+        Serial.print(", ");
+      }
+    }
+    if ( OneWire::crc8( addr, 7) != addr[7]) {
+      Serial.print("CRC is not valid!\n\r");
+      return;
+    }
+  }
+  Serial.println();
+  ourWire.reset_search();
+  return;
+}
+
+// Temperatur ausgeben
+void show_temperature(byte num,float temp){
+
+  Serial.print("Sensor ");
+  Serial.print(num);
+  Serial.print(": ");
+  Serial.print(temp);
+  Serial.print(" ");  // Hier müssen wir ein wenig tricksen
+  Serial.write(176);  // um das °-Zeichen korrekt darzustellen
+  Serial.println("C");
 }
