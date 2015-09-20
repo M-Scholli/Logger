@@ -31,7 +31,9 @@
 #include <MemoryFree.h>
 #include "Timer.h"
 
-#define LOGTIME 6000 //Zeit zwischen den Messungen in ms;
+#define LOGTIME 6000 	//Zeit zwischen den Messungen in ms;
+#define LCDTIME 300
+#define ADCPIN	A7	// Pin an dem der Temperatursensor 1 angeschlossen ist
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
@@ -46,6 +48,8 @@ RTC_DS1307 RTC;      // RTC Modul
 
 // Timer für das Aufzeichnungsintervall
 Timer tLoop;
+// Timer zum Aktualiseren LCD
+Timer t2;
 
 // On the Ethernet Shield, CS is pin 4. Note that even if it's not
 // used as the CS pin, the hardware CS pin (10 on most Arduino boards,
@@ -166,9 +170,12 @@ setup ()
   //adresseAusgeben (); /* Adresse der Devices ausgeben */
   lcd.clear ();
   dataFile.println (F("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3"));
-  dataFile.println (F("dd.mm.yyyy;hh.mm.ss;°C;Sensor2;Sensor3"));
+  dataFile.print (F("dd.mm.yyyy;hh.mm.ss;"));
+  dataFile.print (0xdf);
+  dataFile.println (F("C;Sensor2;Sensor3"));
   //Timer zum Loggen auf 0 setzten
   tLoop.restart ();
+  t2.restart ();
 }
 
 void
@@ -176,7 +183,12 @@ loop ()
 {
   DateTime now = RTC.now (); // aktuelle Zeit abrufen
 
-  lcdPrintTime (now);
+  if (t2.t_since_start () > LCDTIME)
+    {
+      t2.restart();
+      lcdPrintTime (now);
+      lcdPrintTempAdc (ADCPIN);
+    }
 
   if (tLoop.t_since_start () > LOGTIME)
     {
@@ -189,9 +201,9 @@ loop ()
       dataString += time_string (now);
       dataString += ";";
       // read the sensors and append to the string:
-      dataString += read_temp (5);
+      dataString += read_temp (ADCPIN);
       dataString += ";";
-      dataString += String (analogRead (A7));
+      dataString += String (analogRead (ADCPIN));
       dataFile.println (dataString);
 
       // print to the serial port too:
@@ -225,6 +237,16 @@ lcdPrintTime (DateTime datetime)
 {
   lcd.setCursor (0, 0);
   lcd.print (date_time_string (datetime));
+}
+
+void
+lcdPrintTempAdc (int pin)
+{
+  lcd.setCursor (0, 1);
+  lcd.print(F("T1:"));
+  lcd.print(read_temp (pin));
+  lcd.write(0xdf);
+  lcd.print(F("C  "));
 }
 
 String
