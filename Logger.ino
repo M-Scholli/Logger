@@ -29,6 +29,9 @@
 //#include "DallasTemperature.h"
 #include <LiquidCrystal.h>
 #include <MemoryFree.h>
+#include "Timer.h"
+
+#define LOGTIME 6000 //Zeit zwischen den Messungen in ms;
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
@@ -40,6 +43,9 @@ LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 //DallasTemperature sensors (&ourWire);/* Dallas Temperature Library für Nutzung der oneWire Library vorbereiten */
 
 RTC_DS1307 RTC;      // RTC Modul
+
+// Timer für das Aufzeichnungsintervall
+Timer tLoop;
 
 // On the Ethernet Shield, CS is pin 4. Note that even if it's not
 // used as the CS pin, the hardware CS pin (10 on most Arduino boards,
@@ -161,6 +167,8 @@ setup ()
   lcd.clear ();
   dataFile.println (F("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3"));
   dataFile.println (F("dd.mm.yyyy;hh.mm.ss;°C;Sensor2;Sensor3"));
+  //Timer zum Loggen auf 0 setzten
+  tLoop.restart ();
 }
 
 void
@@ -168,34 +176,37 @@ loop ()
 {
   DateTime now = RTC.now (); // aktuelle Zeit abrufen
 
-  show_time_and_date (now);  // Datum und Uhrzeit ausgeben
-
-  // make a string for assembling the data to log:
   lcdPrintTime (now);
-  String dataString = "";
-  dataString += date_string (now);
-  dataString += ";";
-  dataString += time_string (now);
-  dataString += ";";
 
-  // read three sensors and append to the string:
-  dataString += read_temp (5);
-  dataString += ";";
-  dataString += String (analogRead (A7));
-  dataFile.println (dataString);
+  if (tLoop.t_since_start () > LOGTIME)
+    {
+      tLoop.restart ();
 
-  // print to the serial port too:
-  Serial.println (dataString);
+      // Erzeuge den Datenstring für die csv Datei
+      String dataString = "";
+      dataString += date_string (now);
+      dataString += ";";
+      dataString += time_string (now);
+      dataString += ";";
+      // read the sensors and append to the string:
+      dataString += read_temp (5);
+      dataString += ";";
+      dataString += String (analogRead (A7));
+      dataFile.println (dataString);
 
-  Serial.println (freeMemory ());
+      // print to the serial port too:
+      Serial.println (dataString);
 
-  // The following line will 'save' the file to the SD card after every
-  // line of data - this will use more power and slow down how much data
-  // you can read but it's safer!
-  // If you want to speed up the system, remove the call to flush() and it
-  // will save the file only every 512 bytes - every time a sector on the
-  // SD card is filled with data.
-  dataFile.flush ();
+      Serial.println (freeMemory ());
+
+      // The following line will 'save' the file to the SD card after every
+      // line of data - this will use more power and slow down how much data
+      // you can read but it's safer!
+      // If you want to speed up the system, remove the call to flush() and it
+      // will save the file only every 512 bytes - every time a sector on the
+      // SD card is filled with data.
+      dataFile.flush ();
+    }
   /*
    sensors.requestTemperatures (); // Temperatursensor(en) auslesen
 
@@ -205,8 +216,6 @@ loop ()
    show_temperature (i + 1, sensors.getTempCByIndex (i));
    }
    */
-  // Take 1 measurement every 500 milliseconds
-  delay (6000);
 }
 
 //Messe Temp. 0V=0gradC 5V=100gradC
@@ -274,13 +283,6 @@ date_time_string (DateTime datetime)
     s += " ";
   s += time_string (datetime);
   return s;
-}
-
-// Datum und Uhrzeit ausgeben
-void
-show_time_and_date (DateTime datetime)
-{
-  Serial.println (date_time_string (datetime));
 }
 
 /*
