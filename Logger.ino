@@ -30,7 +30,6 @@
 #include <LiquidCrystal.h>
 #include <MemoryFree.h>
 
-
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 
@@ -73,7 +72,7 @@ setup ()
   Serial.println (F("FVA Datenlogger"));
   lcd.clear ();
   lcd.print (F("FVA Datenlogger"));
-  Serial.println(freeMemory());
+  Serial.println (freeMemory ());
   delay (300);
   Serial.println (F("Starte Datum und Zeit"));
   lcd.setCursor (0, 1);
@@ -89,8 +88,8 @@ setup ()
       // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft
       RTC.adjust (DateTime (2000, 0, 0, 0, 0, 0));
 
-      Serial.println (F(
-	  "Echtzeituhr wurde gestartet und auf Systemzeit gesetzt."));
+      Serial.println (
+	  F("Echtzeituhr wurde gestartet und auf Systemzeit gesetzt."));
       lcd.setCursor (0, 1);
       lcd.print F(("RTC Error          "));
     }
@@ -122,7 +121,7 @@ setup ()
   Serial.println (F("SD Karte erkannt!"));
   lcd.setCursor (0, 2);
   lcd.print (F("SD Karte erkannt!   "));
-  Serial.println(freeMemory());
+  Serial.println (freeMemory ());
   delay (300);
   DateTime now = RTC.now ();
   String logName = "";
@@ -159,7 +158,7 @@ setup ()
   delay (1000);
 
   //adresseAusgeben (); /* Adresse der Devices ausgeben */
-
+  lcd.clear ();
   dataFile.println (F("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3"));
   dataFile.println (F("dd.mm.yyyy;hh.mm.ss;°C;Sensor2;Sensor3"));
 }
@@ -172,8 +171,8 @@ loop ()
   show_time_and_date (now);  // Datum und Uhrzeit ausgeben
 
   // make a string for assembling the data to log:
+  lcdPrintTime (now);
   String dataString = "";
-
   dataString += date_string (now);
   dataString += ";";
   dataString += time_string (now);
@@ -188,6 +187,8 @@ loop ()
   // print to the serial port too:
   Serial.println (dataString);
 
+  Serial.println (freeMemory ());
+
   // The following line will 'save' the file to the SD card after every
   // line of data - this will use more power and slow down how much data
   // you can read but it's safer!
@@ -195,7 +196,6 @@ loop ()
   // will save the file only every 512 bytes - every time a sector on the
   // SD card is filled with data.
   dataFile.flush ();
-  Serial.println(freeMemory());
   /*
    sensors.requestTemperatures (); // Temperatursensor(en) auslesen
 
@@ -211,6 +211,13 @@ loop ()
 
 //Messe Temp. 0V=0gradC 5V=100gradC
 
+void
+lcdPrintTime (DateTime datetime)
+{
+  lcd.setCursor (0, 0);
+  lcd.print (date_time_string (datetime));
+}
+
 String
 read_temp (int pin)
 {
@@ -222,63 +229,50 @@ read_temp (int pin)
   return temp;
 }
 
-// Wochentag ermitteln
-String
-get_day_of_week (uint8_t dow)
-{
-
-  String dows = "  ";
-  switch (dow)
-    {
-    case 0:
-      dows = "So";
-      break;
-    case 1:
-      dows = "Mo";
-      break;
-    case 2:
-      dows = "Di";
-      break;
-    case 3:
-      dows = "Mi";
-      break;
-    case 4:
-      dows = "Do";
-      break;
-    case 5:
-      dows = "Fr";
-      break;
-    case 6:
-      dows = "Sa";
-      break;
-    }
-
-  return dows;
-}
-
 // Datums String
 String
 date_string (DateTime datetime)
 {
   String s = "";
+  if (datetime.day () < 10)
+    s += "0";
   s += String (datetime.day ());
   s += ".";
+  if (datetime.month () < 10)
+    s += "0";
   s += String (datetime.month ());
   s += ".";
   s += String (datetime.year ());
   return s;
 }
 
-// Datums String
+// Uhrzeit String
 String
 time_string (DateTime datetime)
 {
   String s = "";
   s += String (datetime.hour ());
   s += ":";
+  if (datetime.minute () < 10)
+    s += "0";
   s += String (datetime.minute ());
   s += ":";
+  if (datetime.second () < 10)
+    s += "0";
   s += String (datetime.second ());
+  return s;
+}
+
+//Datums Uhrzeit String;
+String
+date_time_string (DateTime datetime)
+{
+  String s = "";
+  s += date_string (datetime);
+  s += " ";
+  if (datetime.hour () < 10)
+    s += " ";
+  s += time_string (datetime);
   return s;
 }
 
@@ -286,32 +280,7 @@ time_string (DateTime datetime)
 void
 show_time_and_date (DateTime datetime)
 {
-
-  // Wochentag, Tag.Monat.Jahr
-  Serial.print (get_day_of_week (datetime.dayOfWeek ()));
-  Serial.print (", ");
-  if (datetime.day () < 10)
-    Serial.print (0);
-  Serial.print (datetime.day (), DEC);
-  Serial.print (".");
-  if (datetime.month () < 10)
-    Serial.print (0);
-  Serial.print (datetime.month (), DEC);
-  Serial.print (".");
-  Serial.println (datetime.year (), DEC);
-
-  // Stunde:Minute:Sekunde
-  if (datetime.hour () < 10)
-    Serial.print (0);
-  Serial.print (datetime.hour (), DEC);
-  Serial.print (":");
-  if (datetime.minute () < 10)
-    Serial.print (0);
-  Serial.print (datetime.minute (), DEC);
-  Serial.print (":");
-  if (datetime.second () < 10)
-    Serial.print (0);
-  Serial.println (datetime.second (), DEC);
+  Serial.println (date_time_string (datetime));
 }
 
 /*
