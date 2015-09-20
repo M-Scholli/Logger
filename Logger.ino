@@ -185,7 +185,7 @@ loop ()
 
   if (t2.t_since_start () > LCDTIME)
     {
-      t2.restart();
+      t2.restart ();
       lcdPrintTime (now);
       lcdPrintTempAdc (ADCPIN);
     }
@@ -243,10 +243,10 @@ void
 lcdPrintTempAdc (int pin)
 {
   lcd.setCursor (0, 1);
-  lcd.print(F("T1:"));
-  lcd.print(read_temp (pin));
-  lcd.write(0xdf);
-  lcd.print(F("C  "));
+  lcd.print (F("T1:"));
+  lcd.print (read_temp (pin));
+  lcd.write (0xdf);
+  lcd.print (F("C  "));
 }
 
 String
