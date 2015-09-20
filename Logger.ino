@@ -25,18 +25,18 @@
 #include <Wire.h>    // I2C-Bibliothek einbinden
 #include "RTClib.h"  // RTC-Bibliothek einbinden
 #include "floatToString.h"
-#include "OneWire.h"
-#include "DallasTemperature.h"
+//#include "OneWire.h"
+//#include "DallasTemperature.h"
 #include <LiquidCrystal.h>
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 
-#define ONE_WIRE_BUS 9
+//#define ONE_WIRE_BUS 9
 
-OneWire ourWire (ONE_WIRE_BUS); /* Ini oneWire instance */
+//OneWire ourWire (ONE_WIRE_BUS); /* Ini oneWire instance */
 
-DallasTemperature sensors (&ourWire);/* Dallas Temperature Library für Nutzung der oneWire Library vorbereiten */
+//DallasTemperature sensors (&ourWire);/* Dallas Temperature Library für Nutzung der oneWire Library vorbereiten */
 
 RTC_DS1307 RTC;      // RTC Modul
 
@@ -150,11 +150,11 @@ setup ()
 	;
     }
 
-  sensors.begin ();
+  //sensors.begin ();
 
   delay (1000);
 
-  adresseAusgeben (); /* Adresse der Devices ausgeben */
+  //adresseAusgeben (); /* Adresse der Devices ausgeben */
 
   dataFile.println ("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3");
   dataFile.println ("dd.mm.yyyy;hh.mm.ss;°C;Sensor2;Sensor3");
@@ -192,15 +192,15 @@ loop ()
   // will save the file only every 512 bytes - every time a sector on the
   // SD card is filled with data.
   dataFile.flush ();
+  /*
+   sensors.requestTemperatures (); // Temperatursensor(en) auslesen
 
-  sensors.requestTemperatures (); // Temperatursensor(en) auslesen
+   for (byte i = 0; i < sensors.getDeviceCount (); i++)
+   { // Temperatur ausgeben
 
-  for (byte i = 0; i < sensors.getDeviceCount (); i++)
-    { // Temperatur ausgeben
-
-      show_temperature (i + 1, sensors.getTempCByIndex (i));
-    }
-
+   show_temperature (i + 1, sensors.getTempCByIndex (i));
+   }
+   */
   // Take 1 measurement every 500 milliseconds
   delay (6000);
 }
@@ -310,52 +310,54 @@ show_time_and_date (DateTime datetime)
   Serial.println (datetime.second (), DEC);
 }
 
-void
-adresseAusgeben (void)
-{
-  byte i;
-  //byte present = 0;
-  //byte data[12];
-  byte addr[8];
+/*
+ void
+ adresseAusgeben (void)
+ {
+ byte i;
+ //byte present = 0;
+ //byte data[12];
+ byte addr[8];
 
-  Serial.print ("Suche 1-Wire-Devices...");  // "\n\r" is NewLine
-  while (ourWire.search (addr))
-    {
-      Serial.print ("\n\r1-Wire-Device gefunden mit Adresse:\n\r");
-      for (i = 0; i < 8; i++)
-	{
-	  Serial.print ("0x");
-	  if (addr[i] < 16)
-	    {
-	      Serial.print ('0');
-	    }
-	  Serial.print (addr[i], HEX);
-	  if (i < 7)
-	    {
-	      Serial.print (", ");
-	    }
-	}
-      if (OneWire::crc8 (addr, 7) != addr[7])
-	{
-	  Serial.print ("CRC is not valid!\n\r");
-	  return;
-	}
-    }
-  Serial.println ();
-  ourWire.reset_search ();
-  return;
-}
+ Serial.print ("Suche 1-Wire-Devices...");  // "\n\r" is NewLine
+ while (ourWire.search (addr))
+ {
+ Serial.print ("\n\r1-Wire-Device gefunden mit Adresse:\n\r");
+ for (i = 0; i < 8; i++)
+ {
+ Serial.print ("0x");
+ if (addr[i] < 16)
+ {
+ Serial.print ('0');
+ }
+ Serial.print (addr[i], HEX);
+ if (i < 7)
+ {
+ Serial.print (", ");
+ }
+ }
+ if (OneWire::crc8 (addr, 7) != addr[7])
+ {
+ Serial.print ("CRC is not valid!\n\r");
+ return;
+ }
+ }
+ Serial.println ();
+ ourWire.reset_search ();
+ return;
+ }
 
-// Temperatur ausgeben
-void
-show_temperature (byte num, float temp)
-{
+ // Temperatur ausgeben
+ void
+ show_temperature (byte num, float temp)
+ {
 
-  Serial.print ("Sensor ");
-  Serial.print (num);
-  Serial.print (": ");
-  Serial.print (temp);
-  Serial.print (" ");  // Hier müssen wir ein wenig tricksen
-  Serial.write (176);  // um das °-Zeichen korrekt darzustellen
-  Serial.println ("C");
-}
+ Serial.print ("Sensor ");
+ Serial.print (num);
+ Serial.print (": ");
+ Serial.print (temp);
+ Serial.print (" ");  // Hier müssen wir ein wenig tricksen
+ Serial.write (176);  // um das °-Zeichen korrekt darzustellen
+ Serial.println ("C");
+ }
+ */
