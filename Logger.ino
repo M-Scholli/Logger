@@ -19,7 +19,7 @@
  This example code is in the public domain.
 
  */
-
+#include <avr/pgmspace.h>
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>    // I2C-Bibliothek einbinden
@@ -28,6 +28,8 @@
 //#include "OneWire.h"
 //#include "DallasTemperature.h"
 #include <LiquidCrystal.h>
+#include <MemoryFree.h>
+
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
@@ -68,16 +70,19 @@ setup ()
   lcd.begin (20, 4);
 
   // Begrüßungstext auf seriellem Monitor und Display ausgeben
-  Serial.println ("FVA Datenlogger");
+  Serial.println (F("FVA Datenlogger"));
   lcd.clear ();
-  lcd.print ("FVA Datenlogger");
+  lcd.print (F("FVA Datenlogger"));
+  Serial.println(freeMemory());
   delay (300);
-  Serial.println ("Starte Datum und Zeit");
+  Serial.println (F("Starte Datum und Zeit"));
   lcd.setCursor (0, 1);
-  lcd.print ("Starte RTC");
-  Serial.println ("Initializing SD card...");
+  lcd.print (F("Starte RTC"));
+  Serial.println (F("Initializing SD card..."));
   lcd.setCursor (0, 2);
-  lcd.print ("Init. SD Karte");
+  lcd.print (F("Init. SD Karte"));
+  Serial.println(freeMemory());
+
   delay (1000);
 
   if (!RTC.isrunning ())
@@ -86,18 +91,18 @@ setup ()
       // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft
       RTC.adjust (DateTime (2000, 0, 0, 0, 0, 0));
 
-      Serial.println (
-	  "Echtzeituhr wurde gestartet und auf Systemzeit gesetzt.");
+      Serial.println (F(
+	  "Echtzeituhr wurde gestartet und auf Systemzeit gesetzt."));
       lcd.setCursor (0, 1);
-      lcd.print ("RTC Error          ");
+      lcd.print F(("RTC Error          "));
     }
   else
     {
-      Serial.println ("Echtzeituhr laeuft bereits.");
+      Serial.println (F("Echtzeituhr laeuft bereits."));
       lcd.setCursor (0, 1);
-      lcd.print ("RTC l");
+      lcd.print (F("RTC l"));
       lcd.write (0xE1);
-      lcd.print ("uft.          ");
+      lcd.print (F("uft.          "));
     }
 
   // make sure that the default chip select pin is set to
@@ -108,17 +113,18 @@ setup ()
   if (!SD.begin (chipSelect))
     {
       lcd.setCursor (0, 2);
-      Serial.println ("Keine SD-Karte");
-      lcd.print ("Keine SD-Karte!     ");
+      Serial.println (F("Keine SD-Karte"));
+      lcd.print (F("Keine SD-Karte!     "));
       // don't do anything more:
       while (!SD.begin (chipSelect))
 	{
 	  delay (500);
 	}
     }
-  Serial.println ("SD Karte erkannt!");
+  Serial.println (F("SD Karte erkannt!"));
   lcd.setCursor (0, 2);
-  lcd.print ("SD Karte erkannt!   ");
+  lcd.print (F("SD Karte erkannt!   "));
+  Serial.println(freeMemory());
   delay (300);
   DateTime now = RTC.now ();
   String logName = "";
@@ -131,8 +137,8 @@ setup ()
       logName += String (now.year () - 2000);
     }
   else
-    logName += "EE";
-  logName += ".csv";
+    logName += F("EE");
+  logName += F(".csv");
   char charFileName[logName.length () + 1];
   logName.toCharArray (charFileName, sizeof(charFileName));
   Serial.println (charFileName);
@@ -142,9 +148,9 @@ setup ()
   dataFile = SD.open (charFileName, FILE_WRITE);
   if (!dataFile)
     {
-      Serial.println ("error opening .csv");
+      Serial.println (F("error opening .csv"));
       lcd.setCursor (0, 3);
-      lcd.print ("Error .csv Datei    ");
+      lcd.print (F("Error .csv Datei    "));
       // Wait forever since we cant write data
       while (1)
 	;
@@ -156,8 +162,8 @@ setup ()
 
   //adresseAusgeben (); /* Adresse der Devices ausgeben */
 
-  dataFile.println ("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3");
-  dataFile.println ("dd.mm.yyyy;hh.mm.ss;°C;Sensor2;Sensor3");
+  dataFile.println (F("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3"));
+  dataFile.println (F("dd.mm.yyyy;hh.mm.ss;°C;Sensor2;Sensor3"));
 }
 
 void
