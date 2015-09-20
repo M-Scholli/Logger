@@ -30,13 +30,13 @@
 #include <LiquidCrystal.h>
 
 // initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(2, 3, 4, 5, 6, 7, 8);
+LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 
-#define ONE_WIRE_BUS 2
+#define ONE_WIRE_BUS 9
 
-OneWire ourWire(ONE_WIRE_BUS); /* Ini oneWire instance */
+OneWire ourWire (ONE_WIRE_BUS); /* Ini oneWire instance */
 
-DallasTemperature sensors(&ourWire);/* Dallas Temperature Library für Nutzung der oneWire Library vorbereiten */
+DallasTemperature sensors (&ourWire);/* Dallas Temperature Library für Nutzung der oneWire Library vorbereiten */
 
 RTC_DS1307 RTC;      // RTC Modul
 
@@ -44,7 +44,7 @@ RTC_DS1307 RTC;      // RTC Modul
 // used as the CS pin, the hardware CS pin (10 on most Arduino boards,
 // 53 on the Mega) must be left as an output or the SD library
 // functions will not work.
-const int chipSelect = 53;
+const int chipSelect = 10;
 
 File dataFile;
 
@@ -65,10 +65,20 @@ setup ()
       ; // wait for serial port to connect. Needed for Leonardo only
     }
 
-  lcd.begin(20, 4);
+  lcd.begin (20, 4);
 
-  // Begrüßungstext auf seriellem Monitor ausgeben
+  // Begrüßungstext auf seriellem Monitor und Display ausgeben
+  Serial.println ("FVA Datenlogger");
+  lcd.clear ();
+  lcd.print ("FVA Datenlogger");
+  delay (300);
   Serial.println ("Starte Datum und Zeit");
+  lcd.setCursor (0, 1);
+  lcd.print ("Starte RTC");
+  Serial.println ("Initializing SD card...");
+  lcd.setCursor (0, 2);
+  lcd.print ("Init. SD Karte");
+  delay (1000);
 
   if (!RTC.isrunning ())
     {
@@ -78,11 +88,18 @@ setup ()
 
       Serial.println (
 	  "Echtzeituhr wurde gestartet und auf Systemzeit gesetzt.");
+      lcd.setCursor (0, 1);
+      lcd.print ("RTC Error          ");
     }
   else
-    Serial.println ("Echtzeituhr laeuft bereits.");
+    {
+      Serial.println ("Echtzeituhr laeuft bereits.");
+      lcd.setCursor (0, 1);
+      lcd.print ("RTC l");
+      lcd.write (0xE1);
+      lcd.print ("uft.          ");
+    }
 
-  Serial.print ("Initializing SD card...");
   // make sure that the default chip select pin is set to
   // output, even if you don't use it:
   pinMode (SS, OUTPUT);
@@ -90,15 +107,19 @@ setup ()
   // see if the card is present and can be initialized:
   if (!SD.begin (chipSelect))
     {
-      Serial.println ("Card failed, or not present");
+      lcd.setCursor (0, 2);
+      Serial.println ("Keine SD-Karte");
+      lcd.print ("Keine SD-Karte!     ");
       // don't do anything more:
       while (!SD.begin (chipSelect))
 	{
 	  delay (500);
 	}
     }
-  Serial.println ("card initialized.");
-
+  Serial.println ("SD Karte erkannt!");
+  lcd.setCursor (0, 2);
+  lcd.print ("SD Karte erkannt!   ");
+  delay (300);
   DateTime now = RTC.now ();
   String logName = "";
   logName += String (now.day ());
@@ -115,19 +136,25 @@ setup ()
   char charFileName[logName.length () + 1];
   logName.toCharArray (charFileName, sizeof(charFileName));
   Serial.println (charFileName);
-  // Open up the file we're going to log to!
+  lcd.setCursor (0, 3);
+  lcd.print (charFileName);
+  // Öffnen
   dataFile = SD.open (charFileName, FILE_WRITE);
   if (!dataFile)
     {
-      Serial.println ("error opening datalog.txt");
+      Serial.println ("error opening .csv");
+      lcd.setCursor (0, 3);
+      lcd.print ("Error .csv Datei    ");
       // Wait forever since we cant write data
       while (1)
 	;
     }
 
-  sensors.begin();
+  sensors.begin ();
 
-  adresseAusgeben(); /* Adresse der Devices ausgeben */
+  delay (1000);
+
+  adresseAusgeben (); /* Adresse der Devices ausgeben */
 
   dataFile.println ("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3");
   dataFile.println ("dd.mm.yyyy;hh.mm.ss;°C;Sensor2;Sensor3");
@@ -166,12 +193,13 @@ loop ()
   // SD card is filled with data.
   dataFile.flush ();
 
- sensors.requestTemperatures(); // Temperatursensor(en) auslesen
+  sensors.requestTemperatures (); // Temperatursensor(en) auslesen
 
- for(byte i=0;i<sensors.getDeviceCount();i++){ // Temperatur ausgeben
+  for (byte i = 0; i < sensors.getDeviceCount (); i++)
+    { // Temperatur ausgeben
 
- show_temperature(i+1,sensors.getTempCByIndex(i));
- }
+      show_temperature (i + 1, sensors.getTempCByIndex (i));
+    }
 
   // Take 1 measurement every 500 milliseconds
   delay (6000);
@@ -282,43 +310,52 @@ show_time_and_date (DateTime datetime)
   Serial.println (datetime.second (), DEC);
 }
 
-void adresseAusgeben(void) {
+void
+adresseAusgeben (void)
+{
   byte i;
-  byte present = 0;
-  byte data[12];
+  //byte present = 0;
+  //byte data[12];
   byte addr[8];
 
-  Serial.print("Suche 1-Wire-Devices...");// "\n\r" is NewLine
-  while(ourWire.search(addr)) {
-    Serial.print("\n\r1-Wire-Device gefunden mit Adresse:\n\r");
-    for( i = 0; i < 8; i++) {
-      Serial.print("0x");
-      if (addr[i] < 16) {
-        Serial.print('0');
-      }
-      Serial.print(addr[i], HEX);
-      if (i < 7) {
-        Serial.print(", ");
-      }
+  Serial.print ("Suche 1-Wire-Devices...");  // "\n\r" is NewLine
+  while (ourWire.search (addr))
+    {
+      Serial.print ("\n\r1-Wire-Device gefunden mit Adresse:\n\r");
+      for (i = 0; i < 8; i++)
+	{
+	  Serial.print ("0x");
+	  if (addr[i] < 16)
+	    {
+	      Serial.print ('0');
+	    }
+	  Serial.print (addr[i], HEX);
+	  if (i < 7)
+	    {
+	      Serial.print (", ");
+	    }
+	}
+      if (OneWire::crc8 (addr, 7) != addr[7])
+	{
+	  Serial.print ("CRC is not valid!\n\r");
+	  return;
+	}
     }
-    if ( OneWire::crc8( addr, 7) != addr[7]) {
-      Serial.print("CRC is not valid!\n\r");
-      return;
-    }
-  }
-  Serial.println();
-  ourWire.reset_search();
+  Serial.println ();
+  ourWire.reset_search ();
   return;
 }
 
 // Temperatur ausgeben
-void show_temperature(byte num,float temp){
+void
+show_temperature (byte num, float temp)
+{
 
-  Serial.print("Sensor ");
-  Serial.print(num);
-  Serial.print(": ");
-  Serial.print(temp);
-  Serial.print(" ");  // Hier müssen wir ein wenig tricksen
-  Serial.write(176);  // um das °-Zeichen korrekt darzustellen
-  Serial.println("C");
+  Serial.print ("Sensor ");
+  Serial.print (num);
+  Serial.print (": ");
+  Serial.print (temp);
+  Serial.print (" ");  // Hier müssen wir ein wenig tricksen
+  Serial.write (176);  // um das °-Zeichen korrekt darzustellen
+  Serial.println ("C");
 }
