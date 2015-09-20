@@ -81,8 +81,6 @@ setup ()
   Serial.println (F("Initializing SD card..."));
   lcd.setCursor (0, 2);
   lcd.print (F("Init. SD Karte"));
-  Serial.println(freeMemory());
-
   delay (1000);
 
   if (!RTC.isrunning ())
@@ -184,8 +182,7 @@ loop ()
   // read three sensors and append to the string:
   dataString += read_temp (5);
   dataString += ";";
-  dataString += String (analogRead (A5));
-
+  dataString += String (analogRead (A7));
   dataFile.println (dataString);
 
   // print to the serial port too:
@@ -198,6 +195,7 @@ loop ()
   // will save the file only every 512 bytes - every time a sector on the
   // SD card is filled with data.
   dataFile.flush ();
+  Serial.println(freeMemory());
   /*
    sensors.requestTemperatures (); // Temperatursensor(en) auslesen
 
