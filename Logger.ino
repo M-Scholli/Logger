@@ -21,7 +21,7 @@
  */
 #include <avr/pgmspace.h>
 #include <SPI.h>
-#include <SD.h>
+#include <Sdfat.h>
 #include <Wire.h>    // I2C-Bibliothek einbinden
 #include "RTClib.h"  // RTC-Bibliothek einbinden
 #include "floatToString.h"
@@ -30,6 +30,7 @@
 #include <LiquidCrystal.h>
 #include <MemoryFree.h>
 #include "Timer.h"
+//#include "SdFatUtil.h"
 
 #define LOGTIME 6000 	//Zeit zwischen den Messungen in ms;
 #define LCDTIME 300
@@ -46,6 +47,16 @@ DallasTemperature sensors (&ourWire);/* Dallas Temperature Library für Nutzung 
 
 RTC_DS1307 RTC;      // RTC Modul
 
+void dateTime(uint16_t* date, uint16_t* time) {
+  DateTime now = RTC.now();
+
+  // return date using FAT_DATE macro to format fields
+  *date = FAT_DATE(now.year(), now.month(), now.day());
+
+  // return time using FAT_TIME macro to format fields
+  *time = FAT_TIME(now.hour(), now.minute(), now.second());
+}
+
 // Timer für das Aufzeichnungsintervall
 Timer tLoop;
 
@@ -55,7 +66,8 @@ Timer tLoop;
 // functions will not work.
 const uint8_t chipSelect = 10;
 
-File dataFile;
+SdFat SD;
+SdFile dataFile;
 
 void
 setup ()
@@ -94,17 +106,17 @@ setup ()
       RTC.adjust (DateTime (2000, 0, 0, 0, 0, 0));
 
       Serial.println (F("RTC Error"));
-      lcd.setCursor (0, 1);
-      lcd.print F(("RTC Error          "));
+      lcdClearL (1);
+      lcd.print F(("RTC Error"));
     }
   else
     {
-      lcd.setCursor (0, 1);
+      lcdClearL (1);
       lcd.print ("RTC l");
       lcd.write (0xE1);
-      lcd.print (F("uft.          "));
+      lcd.print (F("uft"));
     }
-
+  SdFile::dateTimeCallback(dateTime);
   // make sure that the default chip select pin is set to
   // output, even if you don't use it:
   pinMode (SS, OUTPUT);
@@ -112,31 +124,32 @@ setup ()
   // see if the card is present and can be initialized:
   if (!SD.begin (chipSelect))
     {
-      lcd.setCursor (0, 2);
+      lcdClearL (2);
       Serial.println (F("no sd"));
-      lcd.print (F("Keine SD-Karte!     "));
+      lcd.print (F("Keine SD-Karte!"));
       // don't do anything more:
       while (!SD.begin (chipSelect))
 	{
 	  delay (500);
 	}
     }
-  lcd.setCursor (0, 2);
-  lcd.print (F("SD Karte erkannt!   "));
+  //lcd.setCursor (0, 2);
+  //lcd.print (F("SD Karte erkannt!   "));
   Serial.println (freeMemory ());
   delay (300);
   DateTime now = RTC.now ();
+  //SdFile::dateTimeCallback(now);
   char charFileName[13] = "";
-  char buf[5] = "";
+  char buf[6] = "";
   itoa (now.day (), buf, 10);
   strcat (charFileName, buf);
   strcat (charFileName, "-");
   itoa (now.month (), buf, 10);
   strcat (charFileName, buf);
   strcat (charFileName, "-");
-  if (int i = now.year () - 2000 <= 99)
+  if (now.year () - 2000 <= 99)
     {
-      itoa (i, buf, 10);
+      itoa ((now.year () - 2000), buf, 10);
       strcat (charFileName, buf);
     }
   else
@@ -144,15 +157,15 @@ setup ()
   strcat (charFileName, ".csv");
 
   Serial.println (charFileName);
-  lcd.setCursor (0, 3);
+  lcdClearL (2);
   lcd.print (charFileName);
   // Öffnen
-  dataFile = SD.open (charFileName, FILE_WRITE);
-  if (!dataFile)
+  if (!dataFile.open (charFileName, O_RDWR | O_CREAT | O_AT_END))
+  //if (!dataFile)
     {
       Serial.println (F("er .csv"));
-      lcd.setCursor (0, 3);
-      lcd.print (F("Error .csv Datei    "));
+      lcdClearL (3);
+      lcd.print (F("Error .csv Datei"));
       // Wait forever since we cant write data
       while (1)
 	;
@@ -222,6 +235,13 @@ loop ()
   delay (LCDTIME);
 }
 
+static void lcdClearL(uint8_t line)
+{
+  lcd.setCursor (0, line);
+  lcd.print (F("                    "));
+  lcd.setCursor (0, line);
+}
+
 //Messe Temp. 0V=0gradC 5V=100gradC
 
 static void
@@ -234,11 +254,11 @@ lcdPrintTime (DateTime datetime)
 static void
 lcdPrintTempAdc (uint8_t pin)
 {
-  lcd.setCursor (0, 1);
+  lcdClearL (1);
   lcd.print ("T1:");
   lcd.print (read_temp (pin));
   lcd.write (0xdf);
-  lcd.print ("C  ");
+  lcd.print ("C");
 }
 
 static String
