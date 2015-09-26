@@ -32,7 +32,7 @@
 #include "Timer.h"
 #include "SdFatUtil.h"
 
-#define LOGTIME 6000 	//Zeit zwischen den Messungen in ms;
+#define LOGTIME 3000 	//Zeit zwischen den Messungen in ms;
 #define LCDTIME 500
 #define ADCPIN	A7	// Pin an dem der Temperatursensor 1 angeschlossen ist
 #define SENSOR_NUM	4 //Anzahl sensoren vom Typ DS18X20
@@ -53,10 +53,10 @@ DallasTemperature sensors (&ourWire);/* Dallas Temperature Library für Nutzung 
 //DeviceAdressen der einzelnen ds1820 Temperatursensoren angeben.
 DeviceAddress sensorsa[SENSOR_NUM] =
   {
+    { 0x28, 0xBA, 0xFA, 0x1C, 0x7, 0x0, 0x0, 0x9D },
     { 0x28, 0xC9, 0xFA, 0xF8, 0x4, 0x0, 0x0, 0xFF },
     { 0x28, 0x58, 0xE4, 0xF8, 0x4, 0x0, 0x0, 0xA7 },
-    { 0x28, 0x66, 0x4F, 0xF9, 0x4, 0x0, 0x0, 0x95 },
-    { 0x28, 0x3F, 0x77, 0xF9, 0x4, 0x0, 0x0, 0x97 } };
+    { 0x28, 0x66, 0x4F, 0xF9, 0x4, 0x0, 0x0, 0x95 }, };
 
 //-----------------------------------------
 //RTC-MODUL
@@ -76,6 +76,17 @@ dateTime (uint16_t* date, uint16_t* time)
   *time = FAT_TIME (now.hour (), now.minute (), now.second ());
 }
 
+//Format für Datum Uhrzeit
+ostream&
+operator << (ostream& os, DateTime& dt)
+{
+  os << dt.year () << '/' << int (dt.month ()) << '/' << int (dt.day ()) << ';';
+  os << int (dt.hour ()) << ':' << setfill ('0') << setw (2)
+      << int (dt.minute ());
+  os << ':' << setw (2) << int (dt.second ()) << setfill (' ');
+  return os;
+}
+
 // Timer für das Aufzeichnungsintervall
 Timer tLoop;
 
@@ -93,8 +104,12 @@ Timer tLoop;
 const uint8_t chipSelect = 10;
 
 SdFat SD;
-SdFile dataFile;
+fstream dataFile;
+char buf[55];
 
+//-----------------------------------------------------------------------------------------
+// Main Setup
+//-----------------------------------------------------------------------------------------//------------------------------------------------------------------------------
 void
 setup ()
 {
@@ -166,23 +181,23 @@ setup ()
   DateTime now = RTC.now ();
   //SdFile::dateTimeCallback(now);
   char charFileName[13] = "";
-  char buf[6] = "";
-  itoa (now.day (), buf, 10);
-  strcat (charFileName, buf);
+  char bufer[6] = "";
+  itoa (now.day (), bufer, 10);
+  strcat (charFileName, bufer);
   strcat (charFileName, ".");
-  itoa (now.month (), buf, 10);
-  strcat (charFileName, buf);
+  itoa (now.month (), bufer, 10);
+  strcat (charFileName, bufer);
   strcat (charFileName, ".");
-  itoa ((now.year ()), buf, 10);
-  strcat (charFileName, buf);
+  itoa ((now.year ()), bufer, 10);
+  strcat (charFileName, bufer);
   strcat (charFileName, ".csv");
-
   Serial.println (charFileName);
   lcdClearL (2);
   lcd.print (charFileName);
   // Öffnen
-  if (!dataFile.open (charFileName, O_RDWR | O_CREAT | O_AT_END))
-  //if (!dataFile)
+  dataFile.open (charFileName, ios::out | ios::app);
+
+  if (!dataFile.is_open ())
     {
       Serial.println (F("er .csv"));
       lcdClearL (3);
@@ -191,7 +206,7 @@ setup ()
       while (1)
 	;
     }
-
+  dataFile.seekg (0, dataFile.end);
   //sensors.begin ();
   adresseAusgeben (); /* Adresse der Devices ausgeben */
 
@@ -199,18 +214,26 @@ setup ()
 
   //adresseAusgeben (); /* Adresse der Devices ausgeben */
   lcd.clear ();
+  //dataFile.println (F("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3"));
   /*
-   dataFile.println (F("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3"));
    dataFile.print (F("dd.mm.yyyy;hh.mm.ss;"));
    dataFile.print (0xdf);
    dataFile.println (F("C;Sensor2;Sensor3"));*/
   //Timer zum Loggen auf 0 setzten
+  // format header in buffer
+  obufstream bout (buf, sizeof(buf));
+  bout << pstr("Datum;Uhrzeit;T1;T2;T3;T4;T5");
+  dataFile << buf << endl;
   tLoop.restart ();
 }
 
+//-----------------------------------------------------------------------------------------
+// Main Loop
+//-----------------------------------------------------------------------------------------
 void
 loop ()
 {
+  obufstream bout (buf, sizeof(buf));
   DateTime now = RTC.now (); // aktuelle Zeit abrufen
   sensors.requestTemperatures (); // Temperatursensor(en) auslesen
   lcd.clear ();
@@ -218,10 +241,21 @@ loop ()
   lcdPrintTempAdc (ADCPIN);
   for (byte i = 0; i < SENSOR_NUM; i++)
     { // Temperatur ausgeben
-      if (i == 0)
-	lcd.setCursor (0, 2);
-      if (i == 2)
-	lcd.setCursor (0, 3);
+      switch (i)
+	{
+	case 0:
+	  lcd.setCursor (0, 2);
+	  break;
+	case 1:
+	  lcd.setCursor (10, 2);
+	  break;
+	case 2:
+	  lcd.setCursor (0, 3);
+	  break;
+	case 3:
+	  lcd.setCursor (10, 3);
+	  break;
+	}
       lcd.print (temperature (i + 1, sensors.getTempC (sensorsa[i])));
     }
   //-----------------------------------------------------------------
@@ -231,32 +265,51 @@ loop ()
   if (tLoop.t_since_start () > LOGTIME)
     {
       tLoop.restart ();
-
-      // Erzeuge den Datenstring für die csv Datei
-      String dataString = "";
-      dataString += date_string (now);
-      dataString += ';';
-      dataString += time_string (now);
-      dataString += ';';
-      // read the sensors and append to the string:
-      // Auslesen des PT100:
-      dataString += read_temp (ADCPIN);
-      dataString += ';';
-      //Auslesen der DS18x20:
+      bout << now;
+      bout << ';' << r_temp (ADCPIN) << ';';
       for (byte i = 0; i < SENSOR_NUM; i++)
 	{
 	  float temp = sensors.getTempC (sensorsa[i]);
 	  if (temp != -127)
 	    {
-	      dataString += String (temp);
+	      bout << temp;
 	    }
-	  dataString += ';';
+	  bout << ';';
 	}
-      // Datei schreiben:
-      dataFile.println (dataString);
+      bout << endl;
 
+      /*
+       // Erzeuge den Datenstring für die csv Datei
+       String dataString = "";
+       dataString += date_string (now);
+       dataString += ';';
+       dataString += time_string (now);
+       dataString += ';';
+       // read the sensors and append to the string:
+       // Auslesen des PT100:
+       dataString += read_temp (ADCPIN);
+       dataString += ';';
+       //Auslesen der DS18x20:
+       for (byte i = 0; i < SENSOR_NUM; i++)
+       {
+       float temp = sensors.getTempC (sensorsa[i]);
+       if (temp != -127)
+       {
+       dataString += String (temp);
+       }
+       dataString += ';';
+       }
+       */
+      // Datei schreiben:
+      //dataFile.println (dataString);
+      // log data and flush to SD
+      dataFile << buf << flush;
+      Serial.println (buf);
+      // check for error
+      if (!dataFile)
+	Serial.println ("write data failed");
       // print to the serial port too:
-      Serial.println (dataString);
+      //Serial.println (dataString);
 
       Serial.println (freeMemory ());
 
@@ -308,6 +361,14 @@ read_temp (uint8_t pin)
   float t = 100 * v / 1023;
   temp = floatToString (buffer, t, 2, true);
   return temp;
+}
+
+static float
+r_temp (uint8_t pin)
+{
+  float t = analogRead (pin);
+  t = 100 * t / 1023;
+  return t;
 }
 
 // Datums String
@@ -367,7 +428,7 @@ temperature (byte num, float temp)
   s += ':';
   if (temp == -127)
     {
-      s += " NC.";
+      s += F("No.Co.");
     }
   else
     {
@@ -386,10 +447,9 @@ adresseAusgeben (void)
   byte data[12];
   byte addr[8];
 
-  Serial.print ("Suche 1-Wire-Devices...\n\r");      // "\n\r" is NewLine
+  Serial.println ("1-Wire Adressen:");      // "\n\r" is NewLine
   while (ourWire.search (addr))
     {
-      Serial.print ("\n\r\n\r1-Wire-Device gefunden mit Adresse:\n\r");
       for (i = 0; i < 8; i++)
 	{
 	  Serial.print ("0x");
@@ -403,9 +463,10 @@ adresseAusgeben (void)
 	      Serial.print (", ");
 	    }
 	}
+      Serial.println ();
       if (OneWire::crc8 (addr, 7) != addr[7])
 	{
-	  Serial.print ("CRC is not valid!\n\r");
+	  Serial.print ("CRC not valid!\n\r");
 	  return;
 	}
     }
