@@ -207,19 +207,9 @@ setup ()
 	;
     }
   dataFile.seekg (0, dataFile.end);
-  //sensors.begin ();
   adresseAusgeben (); /* Adresse der Devices ausgeben */
-
   delay (1000);
-
-  //adresseAusgeben (); /* Adresse der Devices ausgeben */
   lcd.clear ();
-  //dataFile.println (F("Datum;Uhrzeit;Sensor1;Sensor2;Sensor3"));
-  /*
-   dataFile.print (F("dd.mm.yyyy;hh.mm.ss;"));
-   dataFile.print (0xdf);
-   dataFile.println (F("C;Sensor2;Sensor3"));*/
-  //Timer zum Loggen auf 0 setzten
   // format header in buffer
   obufstream bout (buf, sizeof(buf));
   bout << pstr("Datum;Uhrzeit;T1;T2;T3;T4;T5");
@@ -236,7 +226,6 @@ loop ()
   obufstream bout (buf, sizeof(buf));
   DateTime now = RTC.now (); // aktuelle Zeit abrufen
   sensors.requestTemperatures (); // Temperatursensor(en) auslesen
-  lcd.clear ();
   lcdPrintTime (now);
   lcdPrintTempAdc (ADCPIN);
   for (byte i = 0; i < SENSOR_NUM; i++)
@@ -278,48 +267,14 @@ loop ()
 	}
       bout << endl;
 
-      /*
-       // Erzeuge den Datenstring für die csv Datei
-       String dataString = "";
-       dataString += date_string (now);
-       dataString += ';';
-       dataString += time_string (now);
-       dataString += ';';
-       // read the sensors and append to the string:
-       // Auslesen des PT100:
-       dataString += read_temp (ADCPIN);
-       dataString += ';';
-       //Auslesen der DS18x20:
-       for (byte i = 0; i < SENSOR_NUM; i++)
-       {
-       float temp = sensors.getTempC (sensorsa[i]);
-       if (temp != -127)
-       {
-       dataString += String (temp);
-       }
-       dataString += ';';
-       }
-       */
-      // Datei schreiben:
-      //dataFile.println (dataString);
       // log data and flush to SD
       dataFile << buf << flush;
       Serial.println (buf);
       // check for error
       if (!dataFile)
 	Serial.println ("write data failed");
-      // print to the serial port too:
-      //Serial.println (dataString);
 
       Serial.println (freeMemory ());
-
-      // The following line will 'save' the file to the SD card after every
-      // line of data - this will use more power and slow down how much data
-      // you can read but it's safer!
-      // If you want to speed up the system, remove the call to flush() and it
-      // will save the file only every 512 bytes - every time a sector on the
-      // SD card is filled with data.
-      dataFile.flush ();
     }
   delay (LCDTIME);
 }
@@ -443,8 +398,6 @@ void
 adresseAusgeben (void)
 {
   byte i;
-  byte present = 0;
-  byte data[12];
   byte addr[8];
 
   Serial.println ("1-Wire Adressen:");      // "\n\r" is NewLine
@@ -471,6 +424,6 @@ adresseAusgeben (void)
 	}
     }
   Serial.println ();
-  ourWire.reset_search ();
+  //ourWire.reset_search ();
   return;
 }
