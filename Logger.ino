@@ -47,14 +47,24 @@ DallasTemperature sensors (&ourWire);/* Dallas Temperature Library für Nutzung 
 
 RTC_DS1307 RTC;      // RTC Modul
 
-void dateTime(uint16_t* date, uint16_t* time) {
-  DateTime now = RTC.now();
+//DeviceAdressen der einzelnen ds1820 Temperatursensoren angeben. (loop anpassen)
+DeviceAddress sensorsa[] =
+  {
+    { 0x28, 0xC9, 0xFA, 0xF8, 0x4, 0x0, 0x0, 0xFF },
+    { 0x28, 0x58, 0xE4, 0xF8, 0x4, 0x0, 0x0, 0xA7 },
+    { 0x28, 0x66, 0x4F, 0xF9, 0x4, 0x0, 0x0, 0x95 },
+    { 0x28, 0x3F, 0x77, 0xF9, 0x4, 0x0, 0x0, 0x97 } };
+
+void
+dateTime (uint16_t* date, uint16_t* time)
+{
+  DateTime now = RTC.now ();
 
   // return date using FAT_DATE macro to format fields
-  *date = FAT_DATE(now.year(), now.month(), now.day());
+  *date = FAT_DATE (now.year (), now.month (), now.day ());
 
   // return time using FAT_TIME macro to format fields
-  *time = FAT_TIME(now.hour(), now.minute(), now.second());
+  *time = FAT_TIME (now.hour (), now.minute (), now.second ());
 }
 
 // Timer für das Aufzeichnungsintervall
@@ -116,7 +126,7 @@ setup ()
       lcd.write (0xE1);
       lcd.print (F("uft"));
     }
-  SdFile::dateTimeCallback(dateTime);
+  SdFile::dateTimeCallback (dateTime);
   // make sure that the default chip select pin is set to
   // output, even if you don't use it:
   pinMode (SS, OUTPUT);
@@ -143,17 +153,12 @@ setup ()
   char buf[6] = "";
   itoa (now.day (), buf, 10);
   strcat (charFileName, buf);
-  strcat (charFileName, "-");
+  strcat (charFileName, ".");
   itoa (now.month (), buf, 10);
   strcat (charFileName, buf);
-  strcat (charFileName, "-");
-  if (now.year () - 2000 <= 99)
-    {
-      itoa ((now.year () - 2000), buf, 10);
-      strcat (charFileName, buf);
-    }
-  else
-    strcat (charFileName, "XX");
+  strcat (charFileName, ".");
+  itoa ((now.year ()), buf, 10);
+  strcat (charFileName, buf);
   strcat (charFileName, ".csv");
 
   Serial.println (charFileName);
@@ -172,7 +177,7 @@ setup ()
     }
 
   sensors.begin ();
-  //adresseAusgeben(); /* Adresse der Devices ausgeben */
+  adresseAusgeben (); /* Adresse der Devices ausgeben */
 
   delay (1000);
 
@@ -191,8 +196,18 @@ void
 loop ()
 {
   DateTime now = RTC.now (); // aktuelle Zeit abrufen
+  sensors.requestTemperatures (); // Temperatursensor(en) auslesen
+  lcd.clear ();
   lcdPrintTime (now);
   lcdPrintTempAdc (ADCPIN);
+  for (byte i = 0; i < sensors.getDeviceCount (); i++)
+    { // Temperatur ausgeben
+      if (i == 0)
+	lcd.setCursor (0, 2);
+      if (i == 2)
+	lcd.setCursor (0, 3);
+      lcd.print (temperature (i + 1, sensors.getTempC (sensorsa[i])));
+    }
 
   if (tLoop.t_since_start () > LOGTIME)
     {
@@ -201,13 +216,19 @@ loop ()
       // Erzeuge den Datenstring für die csv Datei
       String dataString = "";
       dataString += date_string (now);
-      dataString += ";";
+      dataString += ';';
       dataString += time_string (now);
-      dataString += ";";
+      dataString += ';';
       // read the sensors and append to the string:
       dataString += read_temp (ADCPIN);
-      dataString += ";";
-      dataString += String (analogRead (ADCPIN));
+      dataString += ';';
+      //dataString += String (analogRead (ADCPIN));
+      //dataString += ';';
+      for (byte i = 0; i < sensors.getDeviceCount (); i++)
+	{ // Temperatur ausgeben
+	  dataString += String (sensors.getTempCByIndex (i));
+	  dataString += ';';
+	}
       dataFile.println (dataString);
 
       // print to the serial port too:
@@ -222,20 +243,13 @@ loop ()
       // will save the file only every 512 bytes - every time a sector on the
       // SD card is filled with data.
       dataFile.flush ();
-
-      sensors.requestTemperatures (); // Temperatursensor(en) auslesen
-
-      for (byte i = 0; i < sensors.getDeviceCount (); i++)
-	{ // Temperatur ausgeben
-
-	  Serial.println (temperature (i + 1, sensors.getTempCByIndex (i)));
-	}
-
+      sensors.begin ();
     }
   delay (LCDTIME);
 }
 
-static void lcdClearL(uint8_t line)
+static void
+lcdClearL (uint8_t line)
 {
   lcd.setCursor (0, line);
   lcd.print (F("                    "));
@@ -258,7 +272,7 @@ lcdPrintTempAdc (uint8_t pin)
   lcd.print ("T1:");
   lcd.print (read_temp (pin));
   lcd.write (0xdf);
-  lcd.print ("C");
+  lcd.print ('C');
 }
 
 static String
@@ -278,13 +292,13 @@ date_string (DateTime datetime)
 {
   String s = "";
   if (datetime.day () < 10)
-    s += "0";
+    s += '0';
   s += String (datetime.day ());
-  s += ".";
+  s += '.';
   if (datetime.month () < 10)
-    s += "0";
+    s += '0';
   s += String (datetime.month ());
-  s += ".";
+  s += '.';
   s += String (datetime.year ());
   return s;
 }
@@ -295,13 +309,13 @@ time_string (DateTime datetime)
 {
   String s = "";
   s += String (datetime.hour ());
-  s += ":";
+  s += ':';
   if (datetime.minute () < 10)
-    s += "0";
+    s += '0';
   s += String (datetime.minute ());
-  s += ":";
+  s += ':';
   if (datetime.second () < 10)
-    s += "0";
+    s += '0';
   s += String (datetime.second ());
   return s;
 }
@@ -312,9 +326,9 @@ date_time_string (DateTime datetime)
 {
   String s = "";
   s += date_string (datetime);
-  s += " ";
+  s += ' ';
   if (datetime.hour () < 10)
-    s += " ";
+    s += ' ';
   s += time_string (datetime);
   return s;
 }
@@ -324,11 +338,47 @@ static String
 temperature (byte num, float temp)
 {
   String s = "";
-  s += "Sensor ";
-  s += String (num);
-  s += ": ";
+  s += "T";
+  s += String (num + 1);
+  s += ':';
   s += String (temp);
-  //s += " ";  // Hier müssen wir ein wenig tricksen
+  s.setCharAt (8, 0xDF);
+  s += "C ";
   return s;
 }
 
+void
+adresseAusgeben (void)
+{
+  byte i;
+  byte present = 0;
+  byte data[12];
+  byte addr[8];
+
+  Serial.print ("Suche 1-Wire-Devices...\n\r");      // "\n\r" is NewLine
+  while (ourWire.search (addr))
+    {
+      Serial.print ("\n\r\n\r1-Wire-Device gefunden mit Adresse:\n\r");
+      for (i = 0; i < 8; i++)
+	{
+	  Serial.print ("0x");
+	  if (addr[i] < 16)
+	    {
+	      Serial.print ('0');
+	    }
+	  Serial.print (addr[i], HEX);
+	  if (i < 7)
+	    {
+	      Serial.print (", ");
+	    }
+	}
+      if (OneWire::crc8 (addr, 7) != addr[7])
+	{
+	  Serial.print ("CRC is not valid!\n\r");
+	  return;
+	}
+    }
+  Serial.println ();
+  ourWire.reset_search ();
+  return;
+}
