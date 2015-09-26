@@ -128,7 +128,6 @@ setup ()
     }
 
   lcd.begin (20, 4);
-
   // Begrüßungstext auf seriellem Monitor und Display ausgeben
   lcd.clear ();
   lcd.print (F("FVA Datenlogger"));
@@ -142,10 +141,8 @@ setup ()
 
   if (!RTC.isrunning ())
     {
-
       // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft
       RTC.adjust (DateTime (2000, 0, 0, 0, 0, 0));
-
       Serial.println (F("RTC Error"));
       lcdClearL (1);
       lcd.print F(("RTC Error"));
@@ -157,56 +154,10 @@ setup ()
       lcd.write (0xE1);
       lcd.print (F("uft"));
     }
-  SdFile::dateTimeCallback (dateTime);
-  // make sure that the default chip select pin is set to
-  // output, even if you don't use it:
-  pinMode (SS, OUTPUT);
-
-  // see if the card is present and can be initialized:
-  if (!SD.begin (chipSelect))
-    {
-      lcdClearL (2);
-      Serial.println (F("no sd"));
-      lcd.print (F("Keine SD-Karte!"));
-      // don't do anything more:
-      while (!SD.begin (chipSelect))
-	{
-	  delay (500);
-	}
-    }
-  //lcd.setCursor (0, 2);
-  //lcd.print (F("SD Karte erkannt!   "));
+  sdInit();
   Serial.println (freeMemory ());
   delay (300);
-  DateTime now = RTC.now ();
-  //SdFile::dateTimeCallback(now);
-  char charFileName[13] = "";
-  char bufer[6] = "";
-  itoa (now.day (), bufer, 10);
-  strcat (charFileName, bufer);
-  strcat (charFileName, ".");
-  itoa (now.month (), bufer, 10);
-  strcat (charFileName, bufer);
-  strcat (charFileName, ".");
-  itoa ((now.year ()), bufer, 10);
-  strcat (charFileName, bufer);
-  strcat (charFileName, ".csv");
-  Serial.println (charFileName);
-  lcdClearL (2);
-  lcd.print (charFileName);
-  // Öffnen
-  dataFile.open (charFileName, ios::out | ios::app);
-
-  if (!dataFile.is_open ())
-    {
-      Serial.println (F("er .csv"));
-      lcdClearL (3);
-      lcd.print (F("Error .csv Datei"));
-      // Wait forever since we cant write data
-      while (1)
-	;
-    }
-  dataFile.seekg (0, dataFile.end);
+  sdOpenFile ();
   adresseAusgeben (); /* Adresse der Devices ausgeben */
   delay (1000);
   lcd.clear ();
@@ -278,6 +229,68 @@ loop ()
     }
   delay (LCDTIME);
 }
+
+//-----------------------------------------------------------------------------------------
+// Initialisierungen
+//-----------------------------------------------------------------------------------------
+
+static void
+sdInit (void)
+{
+  SdFile::dateTimeCallback (dateTime);
+  // make sure that the default chip select pin is set to
+  // output, even if you don't use it:
+  pinMode (SS, OUTPUT);
+
+  // see if the card is present and can be initialized:
+  if (!SD.begin (chipSelect))
+    {
+      lcdClearL (2);
+      Serial.println (F("no sd"));
+      lcd.print (F("Keine SD-Karte!"));
+      // don't do anything more:
+      while (!SD.begin (chipSelect))
+	{
+	  delay (500);
+	}
+    }
+}
+
+static void
+sdOpenFile (void)
+{
+  DateTime now = RTC.now ();
+  char charFileName[13] = "";
+  char bufer[6] = "";
+  itoa (now.day (), bufer, 10);
+  strcat (charFileName, bufer);
+  strcat (charFileName, ".");
+  itoa (now.month (), bufer, 10);
+  strcat (charFileName, bufer);
+  strcat (charFileName, ".");
+  itoa ((now.year ()), bufer, 10);
+  strcat (charFileName, bufer);
+  strcat (charFileName, ".csv");
+  Serial.println (charFileName);
+  lcdClearL (2);
+  lcd.print (charFileName);
+  // Öffnen
+  dataFile.open (charFileName, ios::out | ios::app);
+
+  if (!dataFile.is_open ())
+    {
+      lcdClearL (3);
+      lcd.print (F("Error .csv Datei"));
+      // Wait forever since we cant write data
+      while (1)
+	;
+    }
+  dataFile.seekg (0, dataFile.end);
+}
+
+//-----------------------------------------------------------------------------------------
+// Ausgaben für LCD oder Serial
+//-----------------------------------------------------------------------------------------
 
 //Zeile löschen im LCD
 static void
