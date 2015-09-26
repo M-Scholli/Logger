@@ -30,15 +30,19 @@
 #include <LiquidCrystal.h>
 #include <MemoryFree.h>
 #include "Timer.h"
-//#include "SdFatUtil.h"
+#include "SdFatUtil.h"
 
 #define LOGTIME 6000 	//Zeit zwischen den Messungen in ms;
-#define LCDTIME 300
+#define LCDTIME 500
 #define ADCPIN	A7	// Pin an dem der Temperatursensor 1 angeschlossen ist
 #define SENSOR_NUM	4 //Anzahl sensoren vom Typ DS18X20
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
+
+//----------------------------------------
+//DS18x20
+//----------------------------------------
 
 #define ONE_WIRE_BUS A1
 
@@ -46,15 +50,19 @@ OneWire ourWire (ONE_WIRE_BUS); /* Ini oneWire instance */
 
 DallasTemperature sensors (&ourWire);/* Dallas Temperature Library für Nutzung der oneWire Library vorbereiten */
 
-RTC_DS1307 RTC;      // RTC Modul
-
-//DeviceAdressen der einzelnen ds1820 Temperatursensoren angeben. (loop anpassen)
+//DeviceAdressen der einzelnen ds1820 Temperatursensoren angeben.
 DeviceAddress sensorsa[SENSOR_NUM] =
   {
     { 0x28, 0xC9, 0xFA, 0xF8, 0x4, 0x0, 0x0, 0xFF },
     { 0x28, 0x58, 0xE4, 0xF8, 0x4, 0x0, 0x0, 0xA7 },
     { 0x28, 0x66, 0x4F, 0xF9, 0x4, 0x0, 0x0, 0x95 },
     { 0x28, 0x3F, 0x77, 0xF9, 0x4, 0x0, 0x0, 0x97 } };
+
+//-----------------------------------------
+//RTC-MODUL
+//-----------------------------------------
+
+RTC_DS1307 RTC;
 
 void
 dateTime (uint16_t* date, uint16_t* time)
@@ -71,10 +79,17 @@ dateTime (uint16_t* date, uint16_t* time)
 // Timer für das Aufzeichnungsintervall
 Timer tLoop;
 
-// On the Ethernet Shield, CS is pin 4. Note that even if it's not
-// used as the CS pin, the hardware CS pin (10 on most Arduino boards,
-// 53 on the Mega) must be left as an output or the SD library
-// functions will not work.
+//-----------------------------------------
+// SD-KARTEN MODUL
+//-----------------------------------------
+
+/*
+ On the Ethernet Shield, CS is pin 4. Note that even if it's not
+ used as the CS pin, the hardware CS pin (10 on most Arduino boards,
+ 53 on the Mega) must be left as an output or the SD library
+ functions will not work.
+ */
+
 const uint8_t chipSelect = 10;
 
 SdFat SD;
@@ -177,7 +192,7 @@ setup ()
 	;
     }
 
-  sensors.begin ();
+  //sensors.begin ();
   adresseAusgeben (); /* Adresse der Devices ausgeben */
 
   delay (1000);
@@ -252,7 +267,6 @@ loop ()
       // will save the file only every 512 bytes - every time a sector on the
       // SD card is filled with data.
       dataFile.flush ();
-      sensors.begin ();
     }
   delay (LCDTIME);
 }
