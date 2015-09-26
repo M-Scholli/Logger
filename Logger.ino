@@ -35,6 +35,7 @@
 #define LOGTIME 6000 	//Zeit zwischen den Messungen in ms;
 #define LCDTIME 300
 #define ADCPIN	A7	// Pin an dem der Temperatursensor 1 angeschlossen ist
+#define SENSOR_NUM	4 //Anzahl sensoren vom Typ DS18X20
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
@@ -48,7 +49,7 @@ DallasTemperature sensors (&ourWire);/* Dallas Temperature Library für Nutzung 
 RTC_DS1307 RTC;      // RTC Modul
 
 //DeviceAdressen der einzelnen ds1820 Temperatursensoren angeben. (loop anpassen)
-DeviceAddress sensorsa[] =
+DeviceAddress sensorsa[SENSOR_NUM] =
   {
     { 0x28, 0xC9, 0xFA, 0xF8, 0x4, 0x0, 0x0, 0xFF },
     { 0x28, 0x58, 0xE4, 0xF8, 0x4, 0x0, 0x0, 0xA7 },
@@ -200,7 +201,7 @@ loop ()
   lcd.clear ();
   lcdPrintTime (now);
   lcdPrintTempAdc (ADCPIN);
-  for (byte i = 0; i < sensors.getDeviceCount (); i++)
+  for (byte i = 0; i < SENSOR_NUM; i++)
     { // Temperatur ausgeben
       if (i == 0)
 	lcd.setCursor (0, 2);
@@ -208,7 +209,10 @@ loop ()
 	lcd.setCursor (0, 3);
       lcd.print (temperature (i + 1, sensors.getTempC (sensorsa[i])));
     }
-
+  //-----------------------------------------------------------------
+  // Hier werden die Daten gesammelt und auf die SD-Karte geschrieben
+  // Dies geschieht alle LOGTIME Millisekunden
+  //-----------------------------------------------------------------
   if (tLoop.t_since_start () > LOGTIME)
     {
       tLoop.restart ();
@@ -220,15 +224,20 @@ loop ()
       dataString += time_string (now);
       dataString += ';';
       // read the sensors and append to the string:
+      // Auslesen des PT100:
       dataString += read_temp (ADCPIN);
       dataString += ';';
-      //dataString += String (analogRead (ADCPIN));
-      //dataString += ';';
-      for (byte i = 0; i < sensors.getDeviceCount (); i++)
-	{ // Temperatur ausgeben
-	  dataString += String (sensors.getTempCByIndex (i));
+      //Auslesen der DS18x20:
+      for (byte i = 0; i < SENSOR_NUM; i++)
+	{
+	  float temp = sensors.getTempC (sensorsa[i]);
+	  if (temp != -127)
+	    {
+	      dataString += String (temp);
+	    }
 	  dataString += ';';
 	}
+      // Datei schreiben:
       dataFile.println (dataString);
 
       // print to the serial port too:
@@ -248,6 +257,7 @@ loop ()
   delay (LCDTIME);
 }
 
+//Zeile löschen im LCD
 static void
 lcdClearL (uint8_t line)
 {
@@ -341,9 +351,16 @@ temperature (byte num, float temp)
   s += "T";
   s += String (num + 1);
   s += ':';
-  s += String (temp);
-  s.setCharAt (8, 0xDF);
-  s += "C ";
+  if (temp == -127)
+    {
+      s += " NC.";
+    }
+  else
+    {
+      s += String (temp);
+      s.setCharAt (7, 0xDF);
+      s += "C ";
+    }
   return s;
 }
 
