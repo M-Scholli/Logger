@@ -162,7 +162,6 @@ setup ()
   obufstream bout (buf, sizeof(buf));
   bout << pstr("Datum;Uhrzeit;T1;T2;T3;T4;T5");
   dataFile << buf << endl;
-  tLoop.restart ();
 }
 
 //-----------------------------------------------------------------------------------------
@@ -222,8 +221,10 @@ loop ()
       if (!dataFile)
 	{
 	  lcd.clear();
-	  lcd.setCursor(0 ,0);
+	  lcdPrintTime(now);
+	  lcd.setCursor(0 ,1);
 	  lcd.print ("SD-Error");
+	  dataFile.close();
 	  sdInit();
 	  sdOpenFile();
 	}
@@ -253,7 +254,7 @@ sdInit (void)
       // don't do anything more:
       while (!SD.begin (chipSelect))
 	{
-	  delay (500);
+	  delay (1000);
 	}
     }
 }
