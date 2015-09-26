@@ -130,9 +130,7 @@ setup ()
   lcd.begin (20, 4);
   // Begrüßungstext auf seriellem Monitor und Display ausgeben
   lcd.clear ();
-  lcd.print (F("FVA Datenlogger"));
-  Serial.println (freeMemory ());
-  delay (300);
+  lcd.print (F("FVA Logger 1.0"));
   lcd.setCursor (0, 1);
   lcd.print (F("Starte RTC"));
   lcd.setCursor (0, 2);
@@ -143,7 +141,6 @@ setup ()
     {
       // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft
       RTC.adjust (DateTime (2000, 0, 0, 0, 0, 0));
-      Serial.println (F("RTC Error"));
       lcdClearL (1);
       lcd.print F(("RTC Error"));
     }
@@ -220,11 +217,16 @@ loop ()
 
       // log data and flush to SD
       dataFile << buf << flush;
-      Serial.println (buf);
+      Serial.print (buf);
       // check for error
       if (!dataFile)
-	Serial.println ("write data failed");
-
+	{
+	  lcd.clear();
+	  lcd.setCursor(0 ,0);
+	  lcd.print ("SD-Error");
+	  sdInit();
+	  sdOpenFile();
+	}
       Serial.println (freeMemory ());
     }
   delay (LCDTIME);
@@ -413,7 +415,7 @@ adresseAusgeben (void)
   byte i;
   byte addr[8];
 
-  Serial.println ("1-Wire Adressen:");      // "\n\r" is NewLine
+  Serial.println (F("1W. Adr.:"));      // "\n\r" is NewLine
   while (ourWire.search (addr))
     {
       for (i = 0; i < 8; i++)
@@ -432,7 +434,7 @@ adresseAusgeben (void)
       Serial.println ();
       if (OneWire::crc8 (addr, 7) != addr[7])
 	{
-	  Serial.print ("CRC not valid!\n\r");
+	  Serial.print (F("CRCinvalid!\n\r"));
 	  return;
 	}
     }
