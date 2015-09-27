@@ -1,5 +1,5 @@
 /*
-FVA Datenlogger
+ FVA Datenlogger
  */
 #include <avr/pgmspace.h>
 #include <SPI.h>
@@ -12,6 +12,7 @@ FVA Datenlogger
 #include <MemoryFree.h>
 #include "Timer.h"
 #include "SdFatUtil.h"
+#include "Button.h"
 
 #define LOGTIME 	10000 	//Zeit zwischen den Messungen in ms;
 #define LCDTIME 	500	//Wiederholungszeit in ms zum aktualiseieren der Werte im LCD
@@ -21,6 +22,8 @@ FVA Datenlogger
 
 // Initalisierung des LCDs mit den verwendeten Pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
+
+Button button (17, 50, 800);
 
 //----------------------------------------
 //DS18x20
@@ -72,6 +75,7 @@ operator << (ostream& os, DateTime& dt)
 
 // Timer für das Aufzeichnungsintervall
 Timer tLoop;
+Timer tlcd;
 
 //-----------------------------------------
 // SD-KARTEN MODUL
@@ -115,7 +119,7 @@ setup ()
       lcd.write (0xE1);
       lcd.print (F("uft"));
     }
-  sdInit();
+  sdInit ();
   Serial.println (freeMemory ());
   delay (300);
   sdOpenFile ();
@@ -133,30 +137,33 @@ setup ()
 void
 loop ()
 {
-  obufstream bout (buf, sizeof(buf));
-  DateTime now = RTC.now (); // aktuelle Zeit abrufen
-  sensors.requestTemperatures (); // Temperatursensor(en) auslesen (überflüssig?) toDo --> Dauerabfrage der Sensoren
-  lcdPrintTime (now);
-  lcdPrintTempAdc (ADCPIN);
-  //DS19x20 gezielt auslesen:
-  for (byte i = 0; i < SENSOR_NUM; i++)
+  if (tlcd.t_since_start () > LCDTIME)
     {
-      switch (i)
+      DateTime now = RTC.now (); // aktuelle Zeit abrufen
+      sensors.requestTemperatures (); // Temperatursensor(en) auslesen (überflüssig?) toDo --> Dauerabfrage der Sensoren
+      lcdPrintTime (now);
+      lcdPrintTempAdc (ADCPIN);
+      //DS19x20 gezielt auslesen:
+      for (byte i = 0; i < SENSOR_NUM; i++)
 	{
-	case 0:
-	  lcd.setCursor (0, 2);
-	  break;
-	case 1:
-	  lcd.setCursor (10, 2);
-	  break;
-	case 2:
-	  lcd.setCursor (0, 3);
-	  break;
-	case 3:
-	  lcd.setCursor (10, 3);
-	  break;
+	  switch (i)
+	    {
+	    case 0:
+	      lcd.setCursor (0, 2);
+	      break;
+	    case 1:
+	      lcd.setCursor (10, 2);
+	      break;
+	    case 2:
+	      lcd.setCursor (0, 3);
+	      break;
+	    case 3:
+	      lcd.setCursor (10, 3);
+	      break;
+	    }
+	  lcd.print (
+	      TemperaturString (i + 1, sensors.getTempC (sensorenDs1820[i])));
 	}
-      lcd.print (TemperaturString (i + 1, sensors.getTempC (sensorenDs1820[i])));
     }
   //-----------------------------------------------------------------
   // Hier werden die Daten gesammelt und auf die SD-Karte geschrieben
@@ -164,6 +171,8 @@ loop ()
   //-----------------------------------------------------------------
   if (tLoop.t_since_start () > LOGTIME)
     {
+      DateTime now = RTC.now (); // aktuelle Zeit abrufen
+      obufstream bout (buf, sizeof(buf));
       tLoop.restart ();
       bout << now;
       bout << ';' << readTempFloat (ADCPIN) << ';';
@@ -182,17 +191,16 @@ loop ()
       // Überprüfung ob das Schreiben erfolgreich war, bzw. die SD Karte noch vorhanden ist.
       if (!dataFile)
 	{
-	  lcd.clear();
-	  lcdPrintTime(now);
-	  lcd.setCursor(0 ,1);
+	  lcd.clear ();
+	  lcdPrintTime (now);
+	  lcd.setCursor (0, 1);
 	  lcd.print ("SD-Error");
-	  dataFile.close();
-	  sdInit();
-	  sdOpenFile();
+	  dataFile.close ();
+	  sdInit ();
+	  sdOpenFile ();
 	}
       Serial.println (freeMemory ());
     }
-  delay (LCDTIME);
 }
 
 //-----------------------------------------------------------------------------------------
@@ -245,7 +253,8 @@ sdOpenFile (void)
     {
       lcdClearLine (3);
       lcd.print (F("Error .csv Datei"));
-      while (1);
+      while (1)
+	;
     }
 }
 
@@ -289,16 +298,16 @@ readTemp (uint8_t pin)
   String temp;
   float t = readTempFloat (pin);
   vorPunkt = t;
-  nachPunkt = (t * 100 ) - (vorPunkt * 100);
-  if (vorPunkt<100)
+  nachPunkt = (t * 100) - (vorPunkt * 100);
+  if (vorPunkt < 100)
     temp += ' ';
-  if (vorPunkt<10)
+  if (vorPunkt < 10)
     temp += ' ';
-  temp += String(vorPunkt);
+  temp += String (vorPunkt);
   temp += '.';
-  if (nachPunkt<10)
+  if (nachPunkt < 10)
     temp += '0';
-  temp += String(nachPunkt);
+  temp += String (nachPunkt);
   return temp;
 }
 
@@ -378,37 +387,37 @@ TemperaturString (byte num, float temp)
   return s;
 }
 /*
-void
-adresseAusgeben (void)
-{
-  byte i;
-  byte addr[8];
+ void
+ adresseAusgeben (void)
+ {
+ byte i;
+ byte addr[8];
 
-  Serial.println (F("1W. Adr.:"));      // "\n\r" is NewLine
-  while (ourWire.search (addr))
-    {
-      for (i = 0; i < 8; i++)
-	{
-	  Serial.print ("0x");
-	  if (addr[i] < 16)
-	    {
-	      Serial.print ('0');
-	    }
-	  Serial.print (addr[i], HEX);
-	  if (i < 7)
-	    {
-	      Serial.print (", ");
-	    }
-	}
-      Serial.println ();
-      if (OneWire::crc8 (addr, 7) != addr[7])
-	{
-	  Serial.print (F("CRCinvalid!\n\r"));
-	  return;
-	}
-    }
-  Serial.println ();
-  //ourWire.reset_search ();
-  return;
-}
-*/
+ Serial.println (F("1W. Adr.:"));      // "\n\r" is NewLine
+ while (ourWire.search (addr))
+ {
+ for (i = 0; i < 8; i++)
+ {
+ Serial.print ("0x");
+ if (addr[i] < 16)
+ {
+ Serial.print ('0');
+ }
+ Serial.print (addr[i], HEX);
+ if (i < 7)
+ {
+ Serial.print (", ");
+ }
+ }
+ Serial.println ();
+ if (OneWire::crc8 (addr, 7) != addr[7])
+ {
+ Serial.print (F("CRCinvalid!\n\r"));
+ return;
+ }
+ }
+ Serial.println ();
+ //ourWire.reset_search ();
+ return;
+ }
+ */
