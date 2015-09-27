@@ -24,6 +24,8 @@
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 
 Button button (17, 50, 800);
+uint8_t alarm[7] =
+  { 50, 90, 0, 1, 0, 1, 1 };
 
 //----------------------------------------
 //DS18x20
@@ -108,7 +110,7 @@ setup ()
   if (!RTC.isrunning ())
     {
       // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft:
-      RTC.adjust (DateTime (2000, 0, 0, 0, 0, 0));
+      RTC.adjust (DateTime (2000, 0, 0, 1, 0, 1));
       lcdClearLine (1);
       lcd.print F(("RTC Error"));
     }
@@ -137,6 +139,33 @@ setup ()
 void
 loop ()
 {
+  button.check_button_state ();
+  if (button.button_pressed_long ())
+    {
+      lcd.clear ();
+      lcd.setCursor (0, 0);
+      lcd.print (F("Alarm Einstellungen"));
+      lcd.setCursor (0, 1);
+      lcd.print (F("Min:"));
+      lcd.setCursor (4, 1);
+      lcd.print (F("Max: aktiv.Sen.:"));
+      lcd.setCursor (0, 2);
+      lcd.print (alarm[0]);
+      lcd.setCursor (4, 2);
+      lcd.print (alarm[1]);
+      lcd.setCursor (7, 2);
+      for (byte i = 1; i < 7; i++)
+	{
+	  if (alarm[i + 1] == 1)
+	    {
+	      lcd.print ("T");
+	      lcd.print (i);
+	    }
+	  else lcd.print ('No');
+	  lcd.print (' ');
+	}
+      delay (6000);
+    }
   if (tlcd.t_since_start () > LCDTIME)
     {
       DateTime now = RTC.now (); // aktuelle Zeit abrufen
