@@ -1,30 +1,11 @@
 /*
- SD card datalogger
-
- This example shows how to log data from three analog sensors
- to an SD card using the SD library.
-
- The circuit:
- * SD card attached to SPI bus as follows:
- ** UNO:  MOSI - pin 11, MISO - pin 12, CLK - pin 13, CS - pin 4 (CS pin can be changed)
- and pin #10 (SS) must be an output
- ** Mega:  MOSI - pin 51, MISO - pin 50, CLK - pin 52, CS - pin 4 (CS pin can be changed)
- and pin #52 (SS) must be an output
- ** Leonardo: Connect to hardware SPI via the ICSP header
- Pin 4 used here for consistency with other Arduino examples
-
- created  24 Nov 2010
- modified 9 Apr 2012 by Tom Igoe
-
- This example code is in the public domain.
-
+FVA Datenlogger
  */
 #include <avr/pgmspace.h>
 #include <SPI.h>
 #include <Sdfat.h>
-#include <Wire.h>    // I2C-Bibliothek einbinden
-#include "RTClib.h"  // RTC-Bibliothek einbinden
-#include "floatToString.h"
+#include <Wire.h>
+#include "RTClib.h"
 #include "OneWire.h"
 #include "DallasTemperature.h"
 #include <LiquidCrystal.h>
@@ -32,12 +13,13 @@
 #include "Timer.h"
 #include "SdFatUtil.h"
 
-#define LOGTIME 3000 	//Zeit zwischen den Messungen in ms;
-#define LCDTIME 500
-#define ADCPIN	A7	// Pin an dem der Temperatursensor 1 angeschlossen ist
-#define SENSOR_NUM	4 //Anzahl sensoren vom Typ DS18X20
+#define LOGTIME 	10000 	//Zeit zwischen den Messungen in ms;
+#define LCDTIME 	500	//Wiederholungszeit in ms zum aktualiseieren der Werte im LCD
+#define ADCPIN		A7	// Pin an dem der Temperatursensor 1 (0-10V) Adc angeschlossen ist
+#define SENSOR_NUM	4 	// Max. Anzahl Sensoren vom Typ DS18X20
+#define CS_SD		10
 
-// initialize the library with the numbers of the interface pins
+// Initalisierung des LCDs mit den verwendeten Pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 
 //----------------------------------------
@@ -46,12 +28,12 @@ LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 
 #define ONE_WIRE_BUS A1
 
-OneWire ourWire (ONE_WIRE_BUS); /* Ini oneWire instance */
+OneWire ourWire (ONE_WIRE_BUS);
 
-DallasTemperature sensors (&ourWire);/* Dallas Temperature Library für Nutzung der oneWire Library vorbereiten */
+DallasTemperature sensors (&ourWire);
 
-//DeviceAdressen der einzelnen ds1820 Temperatursensoren angeben.
-DeviceAddress sensorsa[SENSOR_NUM] =
+//DeviceAdressen der einzelnen DS18x20 Temperatursensoren
+DeviceAddress sensorenDs1820[SENSOR_NUM] =
   {
     { 0x28, 0xBA, 0xFA, 0x1C, 0x7, 0x0, 0x0, 0x9D },
     { 0x28, 0xC9, 0xFA, 0xF8, 0x4, 0x0, 0x0, 0xFF },
@@ -64,6 +46,7 @@ DeviceAddress sensorsa[SENSOR_NUM] =
 
 RTC_DS1307 RTC;
 
+// nötig für SDFat für ein Erstellungsdatum des Sd Files
 void
 dateTime (uint16_t* date, uint16_t* time)
 {
@@ -76,7 +59,7 @@ dateTime (uint16_t* date, uint16_t* time)
   *time = FAT_TIME (now.hour (), now.minute (), now.second ());
 }
 
-//Format für Datum Uhrzeit
+//Format für Datum Uhrzeit in der CSV Datei
 ostream&
 operator << (ostream& os, DateTime& dt)
 {
@@ -94,15 +77,6 @@ Timer tLoop;
 // SD-KARTEN MODUL
 //-----------------------------------------
 
-/*
- On the Ethernet Shield, CS is pin 4. Note that even if it's not
- used as the CS pin, the hardware CS pin (10 on most Arduino boards,
- 53 on the Mega) must be left as an output or the SD library
- functions will not work.
- */
-
-const uint8_t chipSelect = 10;
-
 SdFat SD;
 fstream dataFile;
 char buf[55];
@@ -113,22 +87,13 @@ char buf[55];
 void
 setup ()
 {
-
   // Initialisiere I2C
   Wire.begin ();
-
   // Initialisiere RTC
   RTC.begin ();
-
-  // Open serial communications and wait for port to open:
+  // Initialisiere SerialUSB Interface
   Serial.begin (9600);
-  while (!Serial)
-    {
-      ; // wait for serial port to connect. Needed for Leonardo only
-    }
-
   lcd.begin (20, 4);
-  // Begrüßungstext auf seriellem Monitor und Display ausgeben
   lcd.clear ();
   lcd.print (F("FVA Logger 1.0"));
   lcd.setCursor (0, 1);
@@ -136,17 +101,16 @@ setup ()
   lcd.setCursor (0, 2);
   lcd.print (F("Init. SD Karte"));
   delay (1000);
-
   if (!RTC.isrunning ())
     {
-      // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft
+      // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft:
       RTC.adjust (DateTime (2000, 0, 0, 0, 0, 0));
-      lcdClearL (1);
+      lcdClearLine (1);
       lcd.print F(("RTC Error"));
     }
   else
     {
-      lcdClearL (1);
+      lcdClearLine (1);
       lcd.print ("RTC l");
       lcd.write (0xE1);
       lcd.print (F("uft"));
@@ -155,10 +119,9 @@ setup ()
   Serial.println (freeMemory ());
   delay (300);
   sdOpenFile ();
-  adresseAusgeben (); /* Adresse der Devices ausgeben */
+  //adresseAusgeben ();
   delay (1000);
   lcd.clear ();
-  // format header in buffer
   obufstream bout (buf, sizeof(buf));
   bout << pstr("Datum;Uhrzeit;T1;T2;T3;T4;T5");
   dataFile << buf << endl;
@@ -172,11 +135,12 @@ loop ()
 {
   obufstream bout (buf, sizeof(buf));
   DateTime now = RTC.now (); // aktuelle Zeit abrufen
-  sensors.requestTemperatures (); // Temperatursensor(en) auslesen
+  sensors.requestTemperatures (); // Temperatursensor(en) auslesen (überflüssig?) toDo --> Dauerabfrage der Sensoren
   lcdPrintTime (now);
   lcdPrintTempAdc (ADCPIN);
+  //DS19x20 gezielt auslesen:
   for (byte i = 0; i < SENSOR_NUM; i++)
-    { // Temperatur ausgeben
+    {
       switch (i)
 	{
 	case 0:
@@ -192,7 +156,7 @@ loop ()
 	  lcd.setCursor (10, 3);
 	  break;
 	}
-      lcd.print (temperature (i + 1, sensors.getTempC (sensorsa[i])));
+      lcd.print (TemperaturString (i + 1, sensors.getTempC (sensorenDs1820[i])));
     }
   //-----------------------------------------------------------------
   // Hier werden die Daten gesammelt und auf die SD-Karte geschrieben
@@ -202,22 +166,20 @@ loop ()
     {
       tLoop.restart ();
       bout << now;
-      bout << ';' << r_temp (ADCPIN) << ';';
+      bout << ';' << readTempFloat (ADCPIN) << ';';
       for (byte i = 0; i < SENSOR_NUM; i++)
 	{
-	  float temp = sensors.getTempC (sensorsa[i]);
+	  float temp = sensors.getTempC (sensorenDs1820[i]);
 	  if (temp != -127)
 	    {
 	      bout << temp;
 	    }
 	  bout << ';';
 	}
-      bout << endl;
-
-      // log data and flush to SD
-      dataFile << buf << flush;
+      bout << endl;		//Zeilen Sprung am Ende der Zeile
+      dataFile << buf << flush;	// Buffer auf die SD Karte schreiben
       Serial.print (buf);
-      // check for error
+      // Überprüfung ob das Schreiben erfolgreich war, bzw. die SD Karte noch vorhanden ist.
       if (!dataFile)
 	{
 	  lcd.clear();
@@ -246,13 +208,13 @@ sdInit (void)
   pinMode (SS, OUTPUT);
 
   // see if the card is present and can be initialized:
-  if (!SD.begin (chipSelect))
+  if (!SD.begin (CS_SD))
     {
-      lcdClearL (2);
+      lcdClearLine (2);
       Serial.println (F("no sd"));
       lcd.print (F("Keine SD-Karte!"));
       // don't do anything more:
-      while (!SD.begin (chipSelect))
+      while (!SD.begin (CS_SD))
 	{
 	  delay (1000);
 	}
@@ -275,18 +237,15 @@ sdOpenFile (void)
   strcat (charFileName, bufer);
   strcat (charFileName, ".csv");
   Serial.println (charFileName);
-  lcdClearL (2);
+  lcdClearLine (2);
   lcd.print (charFileName);
-  // Öffnen
-  dataFile.open (charFileName, ios::out | ios::app);
+  dataFile.open (charFileName, ios::out | ios::app); // Erstellt eine neue Datei falls keine zum öffnen vorhanden ist
 
   if (!dataFile.is_open ())
     {
-      lcdClearL (3);
+      lcdClearLine (3);
       lcd.print (F("Error .csv Datei"));
-      // Wait forever since we cant write data
-      while (1)
-	;
+      while (1);
     }
   dataFile.seekg (0, dataFile.end);
 }
@@ -297,7 +256,7 @@ sdOpenFile (void)
 
 //Zeile löschen im LCD
 static void
-lcdClearL (uint8_t line)
+lcdClearLine (uint8_t line)
 {
   lcd.setCursor (0, line);
   lcd.print (F("                    "));
@@ -310,32 +269,36 @@ static void
 lcdPrintTime (DateTime datetime)
 {
   lcd.setCursor (0, 0);
-  lcd.print (date_time_string (datetime));
+  lcd.print (DateAndTimeString (datetime));
 }
 
 static void
 lcdPrintTempAdc (uint8_t pin)
 {
-  lcdClearL (1);
+  lcdClearLine (1);
   lcd.print ("T1:");
-  lcd.print (read_temp (pin));
+  lcd.print (readTemp (pin));
   lcd.write (0xdf);
   lcd.print ('C');
 }
 
 static String
-read_temp (uint8_t pin)
+readTemp (uint8_t pin)
 {
+  int8_t vorPunkt;
+  int16_t nachPunkt;
   String temp;
-  char buffer[8];
-  float v = analogRead (pin);
-  float t = 100 * v / 1023;
-  temp = floatToString (buffer, t, 2, true);
+  float t = readTempFloat (pin);
+  vorPunkt = t;
+  nachPunkt = (t * 100 ) - (vorPunkt * 100);
+  temp += String(vorPunkt);
+  temp += '.';
+  temp += String(nachPunkt);
   return temp;
 }
 
 static float
-r_temp (uint8_t pin)
+readTempFloat (uint8_t pin)
 {
   float t = analogRead (pin);
   t = 100 * t / 1023;
@@ -344,7 +307,7 @@ r_temp (uint8_t pin)
 
 // Datums String
 static String
-date_string (DateTime datetime)
+DateString (DateTime datetime)
 {
   String s = "";
   if (datetime.day () < 10)
@@ -361,7 +324,7 @@ date_string (DateTime datetime)
 
 // Uhrzeit String
 static String
-time_string (DateTime datetime)
+TimeString (DateTime datetime)
 {
   String s = "";
   s += String (datetime.hour ());
@@ -378,20 +341,20 @@ time_string (DateTime datetime)
 
 //Datums Uhrzeit String;
 static String
-date_time_string (DateTime datetime)
+DateAndTimeString (DateTime datetime)
 {
   String s = "";
-  s += date_string (datetime);
+  s += DateString (datetime);
   s += ' ';
   if (datetime.hour () < 10)
     s += ' ';
-  s += time_string (datetime);
+  s += TimeString (datetime);
   return s;
 }
 
 // Temperatur String
 static String
-temperature (byte num, float temp)
+TemperaturString (byte num, float temp)
 {
   String s = "";
   s += "T";
@@ -409,7 +372,7 @@ temperature (byte num, float temp)
     }
   return s;
 }
-
+/*
 void
 adresseAusgeben (void)
 {
@@ -443,3 +406,4 @@ adresseAusgeben (void)
   //ourWire.reset_search ();
   return;
 }
+*/
