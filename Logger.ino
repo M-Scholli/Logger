@@ -78,7 +78,7 @@ Timer tLoop;
 //-----------------------------------------
 
 SdFat SD;
-fstream dataFile;
+ofstream dataFile;
 char buf[55];
 
 //-----------------------------------------------------------------------------------------
@@ -247,7 +247,6 @@ sdOpenFile (void)
       lcd.print (F("Error .csv Datei"));
       while (1);
     }
-  dataFile.seekg (0, dataFile.end);
 }
 
 //-----------------------------------------------------------------------------------------
@@ -291,8 +290,14 @@ readTemp (uint8_t pin)
   float t = readTempFloat (pin);
   vorPunkt = t;
   nachPunkt = (t * 100 ) - (vorPunkt * 100);
+  if (vorPunkt<100)
+    temp += ' ';
+  if (vorPunkt<10)
+    temp += ' ';
   temp += String(vorPunkt);
   temp += '.';
+  if (nachPunkt<10)
+    temp += '0';
   temp += String(nachPunkt);
   return temp;
 }
