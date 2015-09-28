@@ -400,7 +400,7 @@ LcdTempAnzeige (void)
 	  lcd.setCursor (10, 3);
 	  break;
 	}
-      lcd.print (TemperaturString (i + 1, temperaturen[i]));
+      lcd.print (TemperaturString (i, temperaturen[i]));
     }
 }
 
