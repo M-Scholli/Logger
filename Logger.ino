@@ -147,35 +147,11 @@ loop ()
   button.check_button_state ();
   if (button.button_press_long ())
     {
-      AlarmMenue();
+      AlarmMenue ();
     }
   if (tlcd.t_since_start () > LCDTIME)
     {
-      DateTime now = RTC.now (); // aktuelle Zeit abrufen
-      sensors.requestTemperatures (); // Temperatursensor(en) auslesen (überflüssig?) toDo --> Dauerabfrage der Sensoren
-      lcdPrintTime (now);
-      lcdPrintTempAdc (ADCPIN);
-      //DS19x20 gezielt auslesen:
-      for (byte i = 0; i < SENSOR_NUM; i++)
-	{
-	  switch (i)
-	    {
-	    case 0:
-	      lcd.setCursor (0, 2);
-	      break;
-	    case 1:
-	      lcd.setCursor (10, 2);
-	      break;
-	    case 2:
-	      lcd.setCursor (0, 3);
-	      break;
-	    case 3:
-	      lcd.setCursor (10, 3);
-	      break;
-	    }
-	  lcd.print (
-	      TemperaturString (i + 1, sensors.getTempC (sensorenDs1820[i])));
-	}
+      LcdTempAnzeige ();
     }
   //-----------------------------------------------------------------
   // Hier werden die Daten gesammelt und auf die SD-Karte geschrieben
@@ -452,6 +428,35 @@ AlarmMenue (void)
     }
 }
 
+void
+LcdTempAnzeige (void)
+{
+  DateTime now = RTC.now (); // aktuelle Zeit abrufen
+  sensors.requestTemperatures (); // Temperatursensor(en) auslesen (überflüssig?) toDo --> Dauerabfrage der Sensoren
+  lcdPrintTime (now);
+  lcdPrintTempAdc (ADCPIN);
+  //DS19x20 gezielt auslesen:
+  for (byte i = 0; i < SENSOR_NUM; i++)
+    {
+      switch (i)
+	{
+	case 0:
+	  lcd.setCursor (0, 2);
+	  break;
+	case 1:
+	  lcd.setCursor (10, 2);
+	  break;
+	case 2:
+	  lcd.setCursor (0, 3);
+	  break;
+	case 3:
+	  lcd.setCursor (10, 3);
+	  break;
+	}
+      lcd.print (
+	  TemperaturString (i + 1, sensors.getTempC (sensorenDs1820[i])));
+    }
+}
 /*
  void
  adresseAusgeben (void)
