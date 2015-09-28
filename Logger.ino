@@ -27,7 +27,7 @@ LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 
 Button button (17, 50, 800);
 
-Alarm alarm(&lcd);
+Alarm alarm (&lcd);
 
 //----------------------------------------
 //DS18x20
@@ -46,6 +46,9 @@ DeviceAddress sensorenDs1820[SENSOR_NUM] =
     { 0x28, 0xC9, 0xFA, 0xF8, 0x4, 0x0, 0x0, 0xFF },
     { 0x28, 0x58, 0xE4, 0xF8, 0x4, 0x0, 0x0, 0xA7 },
     { 0x28, 0x66, 0x4F, 0xF9, 0x4, 0x0, 0x0, 0x95 }, };
+
+float temperaturen[5] =
+  { 0, 0, 0, 0, 0 };
 
 //-----------------------------------------
 //RTC-MODUL
@@ -144,44 +147,7 @@ loop ()
   button.check_button_state ();
   if (button.button_press_long ())
     {
-      uint8_t j = 0;
-      lcd.clear ();
-      lcd.setCursor (0, 0);
-      lcd.print (F("Alarm Einstellungen"));
-      lcd.setCursor (0, 1);
-      lcd.print (F("Min:"));
-      lcd.setCursor (4, 1);
-      lcd.print (F("Max: aktiv.Sen.:"));
-      alarm.lcdWerte ();
-      alarm.lcdCursorAn (j);
-      delay(1000);
-      while (j < 7)
-	{
-	  button.check_button_state ();
-	  int adc = analogRead (ADC_REG);
-	  if (j < 2)
-	    {
-	      alarm.Werte[j] = adc / 10.24;
-	    }
-	  else
-	    {
-	      if (adc > 600)
-		  alarm.Werte[j] = 1;
-	      else if (adc < 400)
-		  alarm.Werte[j] = 0;
-	    }
-	  alarm.lcdWert (j);
-	  if (button.button_pressed_short ())
-	    {
-	      alarm.lcdCursorAus (j);
-	      j++;
-	      if (j < 7)
-		{
-		alarm.lcdCursorAn (j);
-		}
-	    }
-	}
-      delay (300);
+      AlarmMenue();
     }
   if (tlcd.t_since_start () > LCDTIME)
     {
@@ -432,6 +398,60 @@ TemperaturString (byte num, float temp)
     }
   return s;
 }
+
+void
+TempsAuslesen (void)
+{
+  temperaturen[0] = readTempFloat (ADCPIN);
+  for (uint8_t i = 1; i < 5; i++)
+    {
+      temperaturen[i] = sensors.getTempC (sensorenDs1820[i]);
+    }
+}
+
+void
+AlarmMenue (void)
+{
+  uint8_t j = 0;
+  lcd.clear ();
+  lcd.setCursor (0, 0);
+  lcd.print (F("Alarm Einstellungen"));
+  lcd.setCursor (0, 1);
+  lcd.print (F("Min:"));
+  lcd.setCursor (4, 1);
+  lcd.print (F("Max: aktiv.Sen.:"));
+  alarm.lcdWerte ();
+  alarm.lcdCursorAn (j);
+  delay (1000);
+  while (j < 7)
+    {
+      button.check_button_state ();
+      int adc = analogRead (ADC_REG);
+      if (j < 2)
+	{
+	  alarm.Werte[j] = adc / 10.24;
+	}
+      else
+	{
+	  if (adc > 600)
+	    alarm.Werte[j] = 1;
+	  else if (adc < 400)
+	    alarm.Werte[j] = 0;
+	}
+      alarm.lcdWert (j);
+      if (button.button_pressed_short ())
+	{
+	  alarm.lcdCursorAus (j);
+	  j++;
+	  if (j < 7)
+	    {
+	      alarm.lcdCursorAn (j);
+	    }
+	}
+      delay (100);
+    }
+}
+
 /*
  void
  adresseAusgeben (void)
