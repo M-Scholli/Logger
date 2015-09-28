@@ -180,68 +180,21 @@ lcdClearLine (uint8_t line)
   lcd.setCursor (0, line);
 }
 
-//Messe Temp. 0V=0gradC 5V=100gradC
-
 static void
-lcdPrintTime (DateTime datetime)
+lcdPrintTimeNew (void)
 {
+  obufstream bout (buf, sizeof(buf));
+  DateTime now =RTC.now();
+  bout << now;
   lcd.setCursor (0, 0);
-  lcd.print (DateAndTimeString (datetime));
+  lcd.print (buf);
 }
-
 static float
 readTempFloat (uint8_t pin)
 {
   float t = analogRead (pin);
   t = 100 * t / 1023;
   return t;
-}
-
-// Datums String
-static String
-DateString (DateTime datetime)
-{
-  String s = "";
-  if (datetime.day () < 10)
-    s += '0';
-  s += String (datetime.day ());
-  s += '.';
-  if (datetime.month () < 10)
-    s += '0';
-  s += String (datetime.month ());
-  s += '.';
-  s += String (datetime.year ());
-  return s;
-}
-
-// Uhrzeit String
-static String
-TimeString (DateTime datetime)
-{
-  String s = "";
-  s += String (datetime.hour ());
-  s += ':';
-  if (datetime.minute () < 10)
-    s += '0';
-  s += String (datetime.minute ());
-  s += ':';
-  if (datetime.second () < 10)
-    s += '0';
-  s += String (datetime.second ());
-  return s;
-}
-
-//Datums Uhrzeit String;
-static String
-DateAndTimeString (DateTime datetime)
-{
-  String s = "";
-  s += DateString (datetime);
-  s += ' ';
-  if (datetime.hour () < 10)
-    s += ' ';
-  s += TimeString (datetime);
-  return s;
 }
 
 static String
@@ -383,7 +336,7 @@ LcdTempAnzeige (void)
 {
   DateTime now = RTC.now (); // aktuelle Zeit abrufen
   sensors.requestTemperatures (); // Temperatursensor(en) auslesen (überflüssig?) toDo --> Dauerabfrage der Sensoren
-  lcdPrintTime (now);
+  lcdPrintTimeNew ();
   //Temperaturen ausgeben:
   for (byte i = 0; i < 4; i++)
     {
@@ -432,7 +385,7 @@ logSdKarte (void)
   if (!dataFile)
     {
       lcd.clear ();
-      lcdPrintTime (now);
+      lcdPrintTimeNew ();
       lcd.setCursor (0, 1);
       lcd.print ("SD-Error");
       dataFile.close ();
