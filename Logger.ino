@@ -329,6 +329,8 @@ LcdTempAnzeige (void)
     }
 }
 
+// Schreibt die gesammelten Daten auf die Sd Karte
+// todo mit interupt timer aufrufen.
 void
 logSdKarte (void)
 {
@@ -463,10 +465,7 @@ loop ()
       TempsAuslesen ();
       LcdTempAnzeige ();
     }
-  //-----------------------------------------------------------------
-  // Hier werden die Daten gesammelt und auf die SD-Karte geschrieben
-  // Dies geschieht alle LOGTIME Millisekunden
-  //-----------------------------------------------------------------
+  //Aufruf der Aufzeichnung auf der SD-Karte
   if (tLoop.t_since_start () > LOGTIME)
     {
       TempsAuslesen ();
