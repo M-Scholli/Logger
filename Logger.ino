@@ -161,7 +161,7 @@ loop ()
 	      lcd.print ("T");
 	      lcd.print (i);
 	    }
-	  else lcd.print ('No');
+	  else lcd.print ("n.");
 	  lcd.print (' ');
 	}
       delay (6000);
