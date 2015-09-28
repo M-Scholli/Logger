@@ -332,24 +332,48 @@ AlarmMenue (void)
 void
 lcdAlarm (void)
 {
-  String s = "Alarm:";
+  String smax = "";
+  String smin = "";
   uint8_t aktiv = 0;
+  uint8_t aktMin = 0;
+  uint8_t aktMax = 0;
   for (uint8_t i = 0; i < 4; i++)
     {
       if (alarm.alarm[i] == 1)
-	s += sensorNum (i + 1);
-      s += ' ';
+	{
+	smax += sensorNum (i + 1);
+	smax += ' ';
+	}
     }
-  s += ">Max ";
+  if (smax.length() > 1)
+    {
+      smax += ">Max ";
+      aktMax = 1;
+    }
   for (uint8_t j = 0; j < 4; j++)
     {
-      if (alarm.alarm[j] == 1)
-	s += sensorNum (j + 1);
-      s += ' ';
+      if (alarm.alarm[j] == 2)
+	{
+	smin += sensorNum (j + 1);
+	smin += ' ';
+	}
     }
-  s +="<Min";
+  if (smin.length() > 1)
+    {
+      smin +="<Min";
+      aktMin = 1;
+    }
   lcdClearLine(1);
-  lcd.print(s);
+  if (aktMax == 1)
+    {
+      lcd.print(smax);
+      aktiv = 1;
+    }
+  if (aktMin == 1)
+    {
+      lcd.print(smin);
+      aktiv = 1;
+    }
 }
 
 void
@@ -501,6 +525,7 @@ loop ()
       TempsAuslesen ();
       LcdTempAnzeige ();
       alarm.checkAlarm (temperaturen);
+      lcdAlarm();
     }
   //Aufruf der Aufzeichnung auf der SD-Karte
   if (tLoop.t_since_start () > LOGTIME)
