@@ -72,7 +72,9 @@ dateTime (uint16_t* date, uint16_t* time)
 ostream&
 operator << (ostream& os, DateTime& dt)
 {
-  os << dt.year () << '/' << int (dt.month ()) << '/' << int (dt.day ()) << ';';
+  os << setfill (' ') << setw (2) << int (dt.day ()) ;
+  os << '.' << setfill('0') << setw(2) << int (dt.month ());
+  os << '.' << dt.year () << ';';
   os << int (dt.hour ()) << ':' << setfill ('0') << setw (2)
       << int (dt.minute ());
   os << ':' << setw (2) << int (dt.second ()) << setfill (' ');
@@ -187,6 +189,7 @@ lcdPrintTimeNew (void)
   DateTime now =RTC.now();
   bout << now;
   lcd.setCursor (0, 0);
+  buf[10] = ' ';
   lcd.print (buf);
 }
 static float
