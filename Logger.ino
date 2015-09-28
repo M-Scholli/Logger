@@ -97,6 +97,27 @@ char buf[55];
 //-----------------------------------------------------------------------------------------
 
 static void
+rtcInit (void)
+{
+  // Initialisiere RTC
+  RTC.begin ();
+  if (!RTC.isrunning ())
+      {
+        // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft:
+        RTC.adjust (DateTime (2000, 0, 0, 1, 0, 1));
+        lcdClearLine (1);
+        lcd.print F(("RTC Error"));
+      }
+    else
+      {
+        lcdClearLine (1);
+        lcd.print ("RTC l");
+        lcd.write (0xE1);
+        lcd.print (F("uft"));
+      }
+}
+
+static void
 sdInit (void)
 {
   SdFile::dateTimeCallback (dateTime);
@@ -409,8 +430,6 @@ setup ()
 {
   // Initialisiere I2C
   Wire.begin ();
-  // Initialisiere RTC
-  RTC.begin ();
   // Initialisiere SerialUSB Interface
   Serial.begin (9600);
   lcd.begin (20, 4);
@@ -421,20 +440,7 @@ setup ()
   lcd.setCursor (0, 2);
   lcd.print (F("Init. SD Karte"));
   delay (1000);
-  if (!RTC.isrunning ())
-    {
-      // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft:
-      RTC.adjust (DateTime (2000, 0, 0, 1, 0, 1));
-      lcdClearLine (1);
-      lcd.print F(("RTC Error"));
-    }
-  else
-    {
-      lcdClearLine (1);
-      lcd.print ("RTC l");
-      lcd.write (0xE1);
-      lcd.print (F("uft"));
-    }
+  rtcInit ();
   sdInit ();
   Serial.println (freeMemory ());
   delay (300);
