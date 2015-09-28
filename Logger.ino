@@ -170,37 +170,6 @@ lcdPrintTime (DateTime datetime)
   lcd.print (DateAndTimeString (datetime));
 }
 
-static void
-lcdPrintTempAdc (uint8_t pin)
-{
-  lcdClearLine (1);
-  lcd.print ("T1:");
-  lcd.print (readTemp (pin));
-  lcd.write (0xdf);
-  lcd.print ('C');
-}
-
-static String
-readTemp (uint8_t pin)
-{
-  int8_t vorPunkt;
-  int16_t nachPunkt;
-  String temp;
-  float t = readTempFloat (pin);
-  vorPunkt = t;
-  nachPunkt = (t * 100) - (vorPunkt * 100);
-  if (vorPunkt < 100)
-    temp += ' ';
-  if (vorPunkt < 10)
-    temp += ' ';
-  temp += String (vorPunkt);
-  temp += '.';
-  if (nachPunkt < 10)
-    temp += '0';
-  temp += String (nachPunkt);
-  return temp;
-}
-
 static float
 readTempFloat (uint8_t pin)
 {
@@ -283,7 +252,7 @@ TempsAuslesen (void)
   temperaturen[0] = readTempFloat (ADCPIN);
   for (uint8_t i = 1; i < 5; i++)
     {
-      temperaturen[i] = sensors.getTempC (sensorenDs1820[i]);
+      temperaturen[i] = sensors.getTempC (sensorenDs1820[i-1]);
     }
 }
 
@@ -336,27 +305,28 @@ LcdTempAnzeige (void)
   DateTime now = RTC.now (); // aktuelle Zeit abrufen
   sensors.requestTemperatures (); // Temperatursensor(en) auslesen (überflüssig?) toDo --> Dauerabfrage der Sensoren
   lcdPrintTime (now);
-  lcdPrintTempAdc (ADCPIN);
-  //DS19x20 gezielt auslesen:
-  for (byte i = 0; i < SENSOR_NUM; i++)
+  //Temperaturen ausgeben:
+  for (byte i = 0; i < 5; i++)
     {
       switch (i)
 	{
 	case 0:
-	  lcd.setCursor (0, 2);
+	  lcd.setCursor (0, 1);
 	  break;
 	case 1:
-	  lcd.setCursor (10, 2);
+	  lcd.setCursor (0, 2);
 	  break;
 	case 2:
-	  lcd.setCursor (0, 3);
+	  lcd.setCursor (10, 2);
 	  break;
 	case 3:
+	  lcd.setCursor (0, 3);
+	  break;
+	case 4:
 	  lcd.setCursor (10, 3);
 	  break;
 	}
-      lcd.print (
-	  TemperaturString (i + 1, sensors.getTempC (sensorenDs1820[i])));
+      lcd.print ( TemperaturString (i + 1, temperaturen[i]));
     }
 }
 /*
@@ -454,6 +424,7 @@ loop ()
     }
   if (tlcd.t_since_start () > LCDTIME)
     {
+      TempsAuslesen();
       LcdTempAnzeige ();
     }
   //-----------------------------------------------------------------
