@@ -47,7 +47,7 @@ DeviceAddress sensorenDs1820[SENSOR_NUM] =
     { 0x28, 0x58, 0xE4, 0xF8, 0x4, 0x0, 0x0, 0xA7 }, };
 
 float temperaturen[4] =
-  { 0, 0, 0, 0};
+  { 0, 0, 0, 0 };
 
 //-----------------------------------------
 //RTC-MODUL
@@ -245,7 +245,7 @@ DateAndTimeString (DateTime datetime)
 }
 
 static String
-lcdSensorNum (uint8_t i)
+sensorNum (uint8_t i)
 {
   String s = "";
   s += "T";
@@ -258,7 +258,7 @@ static String
 TemperaturString (byte num, float temp)
 {
   String s = "";
-  s += lcdSensorNum (num + 1);
+  s += sensorNum (num + 1);
   s += ':';
   if (temp == -127)
     {
@@ -266,7 +266,7 @@ TemperaturString (byte num, float temp)
     }
   else
     {
-      if(abs(temp) < 10)
+      if (abs(temp) < 10)
 	s += ' ';
       s += String (temp);
       s.setCharAt (7, 0xDF);
@@ -326,16 +326,30 @@ AlarmMenue (void)
 	}
       delay (100);
     }
-  lcd.clear();
+  lcd.clear ();
 }
 
 void
 lcdAlarm (void)
 {
+  String s = "Alarm:";
+  uint8_t aktiv = 0;
   for (uint8_t i = 0; i < 4; i++)
     {
-
+      if (alarm.alarm[i] == 1)
+	s += sensorNum (i + 1);
+      s += ' ';
     }
+  s += ">Max ";
+  for (uint8_t j = 0; j < 4; j++)
+    {
+      if (alarm.alarm[j] == 1)
+	s += sensorNum (j + 1);
+      s += ' ';
+    }
+  s +="<Min";
+  lcdClearLine(1);
+  lcd.print(s);
 }
 
 void
