@@ -92,7 +92,6 @@ SdFat SD;
 ofstream dataFile;
 char buf[55];
 
-
 //-----------------------------------------------------------------------------------------
 // Initialisierungen
 //-----------------------------------------------------------------------------------------
@@ -252,7 +251,7 @@ TempsAuslesen (void)
   temperaturen[0] = readTempFloat (ADCPIN);
   for (uint8_t i = 1; i < 5; i++)
     {
-      temperaturen[i] = sensors.getTempC (sensorenDs1820[i-1]);
+      temperaturen[i] = sensors.getTempC (sensorenDs1820[i - 1]);
     }
 }
 
@@ -326,9 +325,44 @@ LcdTempAnzeige (void)
 	  lcd.setCursor (10, 3);
 	  break;
 	}
-      lcd.print ( TemperaturString (i + 1, temperaturen[i]));
+      lcd.print (TemperaturString (i + 1, temperaturen[i]));
     }
 }
+
+void
+logSdKarte (void)
+{
+  DateTime now = RTC.now (); // aktuelle Zeit abrufen
+  obufstream bout (buf, sizeof(buf));
+  tLoop.restart ();
+  bout << now;
+  bout << ';' << readTempFloat (ADCPIN) << ';';
+  for (byte i = 0; i < SENSOR_NUM; i++)
+    {
+      float temp = sensors.getTempC (sensorenDs1820[i]);
+      if (temp != -127)
+	{
+	  bout << temp;
+	}
+      bout << ';';
+    }
+  bout << endl;		//Zeilen Sprung am Ende der Zeile
+  dataFile << buf << flush;	// Buffer auf die SD Karte schreiben
+  Serial.print (buf);
+  // Überprüfung ob das Schreiben erfolgreich war, bzw. die SD Karte noch vorhanden ist.
+  if (!dataFile)
+    {
+      lcd.clear ();
+      lcdPrintTime (now);
+      lcd.setCursor (0, 1);
+      lcd.print ("SD-Error");
+      dataFile.close ();
+      sdInit ();
+      sdOpenFile ();
+    }
+}
+
+// Kann verwendet werden um die Adressen der DS18x20 Sensoren heraus zu finden
 /*
  void
  adresseAusgeben (void)
@@ -418,13 +452,15 @@ void
 loop ()
 {
   button.check_button_state ();
+  //Aufruf des Alarm Menüs
   if (button.button_press_long ())
     {
       AlarmMenue ();
     }
+  //Aufruf des Lcd Aktualisierung
   if (tlcd.t_since_start () > LCDTIME)
     {
-      TempsAuslesen();
+      TempsAuslesen ();
       LcdTempAnzeige ();
     }
   //-----------------------------------------------------------------
@@ -433,34 +469,7 @@ loop ()
   //-----------------------------------------------------------------
   if (tLoop.t_since_start () > LOGTIME)
     {
-      DateTime now = RTC.now (); // aktuelle Zeit abrufen
-      obufstream bout (buf, sizeof(buf));
-      tLoop.restart ();
-      bout << now;
-      bout << ';' << readTempFloat (ADCPIN) << ';';
-      for (byte i = 0; i < SENSOR_NUM; i++)
-	{
-	  float temp = sensors.getTempC (sensorenDs1820[i]);
-	  if (temp != -127)
-	    {
-	      bout << temp;
-	    }
-	  bout << ';';
-	}
-      bout << endl;		//Zeilen Sprung am Ende der Zeile
-      dataFile << buf << flush;	// Buffer auf die SD Karte schreiben
-      Serial.print (buf);
-      // Überprüfung ob das Schreiben erfolgreich war, bzw. die SD Karte noch vorhanden ist.
-      if (!dataFile)
-	{
-	  lcd.clear ();
-	  lcdPrintTime (now);
-	  lcd.setCursor (0, 1);
-	  lcd.print ("SD-Error");
-	  dataFile.close ();
-	  sdInit ();
-	  sdOpenFile ();
-	}
+      logSdKarte ();
       Serial.println (freeMemory ());
     }
 }
