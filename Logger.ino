@@ -347,6 +347,7 @@ lcdAlarm (void)
     }
   if (smax.length() > 1)
     {
+      smax.trim();
       smax += ">Max ";
       aktMax = 1;
     }
@@ -360,6 +361,7 @@ lcdAlarm (void)
     }
   if (smin.length() > 1)
     {
+      smin.trim();
       smin +="<Min";
       aktMin = 1;
     }
