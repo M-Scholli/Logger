@@ -102,19 +102,19 @@ rtcInit (void)
   // Initialisiere RTC
   RTC.begin ();
   if (!RTC.isrunning ())
-      {
-        // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft:
-        RTC.adjust (DateTime (2000, 0, 0, 1, 0, 1));
-        lcdClearLine (1);
-        lcd.print F(("RTC Error"));
-      }
-    else
-      {
-        lcdClearLine (1);
-        lcd.print ("RTC l");
-        lcd.write (0xE1);
-        lcd.print (F("uft"));
-      }
+    {
+      // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft:
+      RTC.adjust (DateTime (2000, 0, 0, 1, 0, 1));
+      lcdClearLine (1);
+      lcd.print F(("RTC Error"));
+    }
+  else
+    {
+      lcdClearLine (1);
+      lcd.print ("RTC l");
+      lcd.write (0xE1);
+      lcd.print (F("uft"));
+    }
 }
 
 static void
@@ -245,13 +245,21 @@ DateAndTimeString (DateTime datetime)
   return s;
 }
 
+static String
+lcdSensorNum (uint8_t i)
+{
+  String s = "";
+  s += "T";
+  s += String (i);
+  return s;
+}
+
 // Temperatur String
 static String
 TemperaturString (byte num, float temp)
 {
   String s = "";
-  s += "T";
-  s += String (num + 1);
+  s += lcdSensorNum (num + 1);
   s += ':';
   if (temp == -127)
     {
@@ -316,6 +324,15 @@ AlarmMenue (void)
 	    }
 	}
       delay (100);
+    }
+}
+
+void
+lcdAlarm (void)
+{
+  for (uint8_t i = 0; i < 5; i++)
+    {
+
     }
 }
 
@@ -470,6 +487,7 @@ loop ()
     {
       TempsAuslesen ();
       LcdTempAnzeige ();
+      alarm.checkAlarm (temperaturen);
     }
   //Aufruf der Aufzeichnung auf der SD-Karte
   if (tLoop.t_since_start () > LOGTIME)
