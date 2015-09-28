@@ -18,7 +18,7 @@
 #define LOGTIME 	10000 	//Zeit zwischen den Messungen in ms;
 #define LCDTIME 	500	//Wiederholungszeit in ms zum aktualiseieren der Werte im LCD
 #define ADCPIN		A7	// Pin an dem der Temperatursensor 1 (0-10V) Adc angeschlossen ist
-#define SENSOR_NUM	4 	// Max. Anzahl Sensoren vom Typ DS18X20
+#define SENSOR_NUM	3 	// Max. Anzahl Sensoren vom Typ DS18X20
 #define CS_SD		10
 #define ADC_REG		A6
 
@@ -44,11 +44,10 @@ DeviceAddress sensorenDs1820[SENSOR_NUM] =
   {
     { 0x28, 0xBA, 0xFA, 0x1C, 0x7, 0x0, 0x0, 0x9D },
     { 0x28, 0xC9, 0xFA, 0xF8, 0x4, 0x0, 0x0, 0xFF },
-    { 0x28, 0x58, 0xE4, 0xF8, 0x4, 0x0, 0x0, 0xA7 },
-    { 0x28, 0x66, 0x4F, 0xF9, 0x4, 0x0, 0x0, 0x95 }, };
+    { 0x28, 0x58, 0xE4, 0xF8, 0x4, 0x0, 0x0, 0xA7 }, };
 
-float temperaturen[5] =
-  { 0, 0, 0, 0, 0 };
+float temperaturen[4] =
+  { 0, 0, 0, 0};
 
 //-----------------------------------------
 //RTC-MODUL
@@ -267,6 +266,8 @@ TemperaturString (byte num, float temp)
     }
   else
     {
+      if(abs(temp) < 10)
+	s += ' ';
       s += String (temp);
       s.setCharAt (7, 0xDF);
       s += "C ";
@@ -278,7 +279,7 @@ void
 TempsAuslesen (void)
 {
   temperaturen[0] = readTempFloat (ADCPIN);
-  for (uint8_t i = 1; i < 5; i++)
+  for (uint8_t i = 1; i < 4; i++)
     {
       temperaturen[i] = sensors.getTempC (sensorenDs1820[i - 1]);
     }
@@ -298,7 +299,7 @@ AlarmMenue (void)
   alarm.lcdWerte ();
   alarm.lcdCursorAn (j);
   delay (1000);
-  while (j < 7)
+  while (j < 6)
     {
       button.check_button_state ();
       int adc = analogRead (ADC_REG);
@@ -318,7 +319,7 @@ AlarmMenue (void)
 	{
 	  alarm.lcdCursorAus (j);
 	  j++;
-	  if (j < 7)
+	  if (j < 6)
 	    {
 	      alarm.lcdCursorAn (j);
 	    }
@@ -330,7 +331,7 @@ AlarmMenue (void)
 void
 lcdAlarm (void)
 {
-  for (uint8_t i = 0; i < 5; i++)
+  for (uint8_t i = 0; i < 4; i++)
     {
 
     }
@@ -343,23 +344,20 @@ LcdTempAnzeige (void)
   sensors.requestTemperatures (); // Temperatursensor(en) auslesen (überflüssig?) toDo --> Dauerabfrage der Sensoren
   lcdPrintTime (now);
   //Temperaturen ausgeben:
-  for (byte i = 0; i < 5; i++)
+  for (byte i = 0; i < 4; i++)
     {
       switch (i)
 	{
 	case 0:
-	  lcd.setCursor (0, 1);
-	  break;
-	case 1:
 	  lcd.setCursor (0, 2);
 	  break;
-	case 2:
+	case 1:
 	  lcd.setCursor (10, 2);
 	  break;
-	case 3:
+	case 2:
 	  lcd.setCursor (0, 3);
 	  break;
-	case 4:
+	case 3:
 	  lcd.setCursor (10, 3);
 	  break;
 	}
@@ -377,7 +375,7 @@ logSdKarte (void)
   tLoop.restart ();
   bout << now;
   bout << ';';
-  for (byte i = 0; i < 5; i++)
+  for (byte i = 0; i < 4; i++)
     {
       float temp = temperaturen[i];
       if (temp != -127)
