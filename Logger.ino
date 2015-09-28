@@ -92,104 +92,6 @@ SdFat SD;
 ofstream dataFile;
 char buf[55];
 
-//-----------------------------------------------------------------------------------------
-// Main Setup
-//-----------------------------------------------------------------------------------------//------------------------------------------------------------------------------
-void
-setup ()
-{
-  // Initialisiere I2C
-  Wire.begin ();
-  // Initialisiere RTC
-  RTC.begin ();
-  // Initialisiere SerialUSB Interface
-  Serial.begin (9600);
-  lcd.begin (20, 4);
-  lcd.clear ();
-  lcd.print (F("FVA Logger 1.0"));
-  lcd.setCursor (0, 1);
-  lcd.print (F("Starte RTC"));
-  lcd.setCursor (0, 2);
-  lcd.print (F("Init. SD Karte"));
-  delay (1000);
-  if (!RTC.isrunning ())
-    {
-      // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft:
-      RTC.adjust (DateTime (2000, 0, 0, 1, 0, 1));
-      lcdClearLine (1);
-      lcd.print F(("RTC Error"));
-    }
-  else
-    {
-      lcdClearLine (1);
-      lcd.print ("RTC l");
-      lcd.write (0xE1);
-      lcd.print (F("uft"));
-    }
-  sdInit ();
-  Serial.println (freeMemory ());
-  delay (300);
-  sdOpenFile ();
-  //adresseAusgeben ();
-  delay (1000);
-  lcd.clear ();
-  obufstream bout (buf, sizeof(buf));
-  bout << pstr("Datum;Uhrzeit;T1;T2;T3;T4;T5");
-  dataFile << buf << endl;
-}
-
-//-----------------------------------------------------------------------------------------
-// Main Loop
-//-----------------------------------------------------------------------------------------
-void
-loop ()
-{
-  button.check_button_state ();
-  if (button.button_press_long ())
-    {
-      AlarmMenue ();
-    }
-  if (tlcd.t_since_start () > LCDTIME)
-    {
-      LcdTempAnzeige ();
-    }
-  //-----------------------------------------------------------------
-  // Hier werden die Daten gesammelt und auf die SD-Karte geschrieben
-  // Dies geschieht alle LOGTIME Millisekunden
-  //-----------------------------------------------------------------
-  if (tLoop.t_since_start () > LOGTIME)
-    {
-      DateTime now = RTC.now (); // aktuelle Zeit abrufen
-      obufstream bout (buf, sizeof(buf));
-      tLoop.restart ();
-      bout << now;
-      bout << ';' << readTempFloat (ADCPIN) << ';';
-      for (byte i = 0; i < SENSOR_NUM; i++)
-	{
-	  float temp = sensors.getTempC (sensorenDs1820[i]);
-	  if (temp != -127)
-	    {
-	      bout << temp;
-	    }
-	  bout << ';';
-	}
-      bout << endl;		//Zeilen Sprung am Ende der Zeile
-      dataFile << buf << flush;	// Buffer auf die SD Karte schreiben
-      Serial.print (buf);
-      // Überprüfung ob das Schreiben erfolgreich war, bzw. die SD Karte noch vorhanden ist.
-      if (!dataFile)
-	{
-	  lcd.clear ();
-	  lcdPrintTime (now);
-	  lcd.setCursor (0, 1);
-	  lcd.print ("SD-Error");
-	  dataFile.close ();
-	  sdInit ();
-	  sdOpenFile ();
-	}
-      Serial.println (freeMemory ());
-    }
-}
 
 //-----------------------------------------------------------------------------------------
 // Initialisierungen
@@ -492,3 +394,102 @@ LcdTempAnzeige (void)
  return;
  }
  */
+
+//-----------------------------------------------------------------------------------------
+// Main Setup
+//-----------------------------------------------------------------------------------------//------------------------------------------------------------------------------
+void
+setup ()
+{
+  // Initialisiere I2C
+  Wire.begin ();
+  // Initialisiere RTC
+  RTC.begin ();
+  // Initialisiere SerialUSB Interface
+  Serial.begin (9600);
+  lcd.begin (20, 4);
+  lcd.clear ();
+  lcd.print (F("FVA Logger 1.0"));
+  lcd.setCursor (0, 1);
+  lcd.print (F("Starte RTC"));
+  lcd.setCursor (0, 2);
+  lcd.print (F("Init. SD Karte"));
+  delay (1000);
+  if (!RTC.isrunning ())
+    {
+      // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft:
+      RTC.adjust (DateTime (2000, 0, 0, 1, 0, 1));
+      lcdClearLine (1);
+      lcd.print F(("RTC Error"));
+    }
+  else
+    {
+      lcdClearLine (1);
+      lcd.print ("RTC l");
+      lcd.write (0xE1);
+      lcd.print (F("uft"));
+    }
+  sdInit ();
+  Serial.println (freeMemory ());
+  delay (300);
+  sdOpenFile ();
+  //adresseAusgeben ();
+  delay (1000);
+  lcd.clear ();
+  obufstream bout (buf, sizeof(buf));
+  bout << pstr("Datum;Uhrzeit;T1;T2;T3;T4;T5");
+  dataFile << buf << endl;
+}
+
+//-----------------------------------------------------------------------------------------
+// Main Loop
+//-----------------------------------------------------------------------------------------
+void
+loop ()
+{
+  button.check_button_state ();
+  if (button.button_press_long ())
+    {
+      AlarmMenue ();
+    }
+  if (tlcd.t_since_start () > LCDTIME)
+    {
+      LcdTempAnzeige ();
+    }
+  //-----------------------------------------------------------------
+  // Hier werden die Daten gesammelt und auf die SD-Karte geschrieben
+  // Dies geschieht alle LOGTIME Millisekunden
+  //-----------------------------------------------------------------
+  if (tLoop.t_since_start () > LOGTIME)
+    {
+      DateTime now = RTC.now (); // aktuelle Zeit abrufen
+      obufstream bout (buf, sizeof(buf));
+      tLoop.restart ();
+      bout << now;
+      bout << ';' << readTempFloat (ADCPIN) << ';';
+      for (byte i = 0; i < SENSOR_NUM; i++)
+	{
+	  float temp = sensors.getTempC (sensorenDs1820[i]);
+	  if (temp != -127)
+	    {
+	      bout << temp;
+	    }
+	  bout << ';';
+	}
+      bout << endl;		//Zeilen Sprung am Ende der Zeile
+      dataFile << buf << flush;	// Buffer auf die SD Karte schreiben
+      Serial.print (buf);
+      // Überprüfung ob das Schreiben erfolgreich war, bzw. die SD Karte noch vorhanden ist.
+      if (!dataFile)
+	{
+	  lcd.clear ();
+	  lcdPrintTime (now);
+	  lcd.setCursor (0, 1);
+	  lcd.print ("SD-Error");
+	  dataFile.close ();
+	  sdInit ();
+	  sdOpenFile ();
+	}
+      Serial.println (freeMemory ());
+    }
+}
