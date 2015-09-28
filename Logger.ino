@@ -336,10 +336,10 @@ logSdKarte (void)
   obufstream bout (buf, sizeof(buf));
   tLoop.restart ();
   bout << now;
-  bout << ';' << readTempFloat (ADCPIN) << ';';
-  for (byte i = 0; i < SENSOR_NUM; i++)
+  bout << ';';
+  for (byte i = 0; i < 5; i++)
     {
-      float temp = sensors.getTempC (sensorenDs1820[i]);
+      float temp = temperaturen[i];
       if (temp != -127)
 	{
 	  bout << temp;
@@ -469,6 +469,7 @@ loop ()
   //-----------------------------------------------------------------
   if (tLoop.t_since_start () > LOGTIME)
     {
+      TempsAuslesen ();
       logSdKarte ();
       Serial.println (freeMemory ());
     }
