@@ -326,6 +326,7 @@ AlarmMenue (void)
 	}
       delay (100);
     }
+  lcd.clear();
 }
 
 void
