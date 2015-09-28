@@ -13,19 +13,21 @@
 #include "Timer.h"
 #include "SdFatUtil.h"
 #include "Button.h"
+#include "Alarm.h"
 
 #define LOGTIME 	10000 	//Zeit zwischen den Messungen in ms;
 #define LCDTIME 	500	//Wiederholungszeit in ms zum aktualiseieren der Werte im LCD
 #define ADCPIN		A7	// Pin an dem der Temperatursensor 1 (0-10V) Adc angeschlossen ist
 #define SENSOR_NUM	4 	// Max. Anzahl Sensoren vom Typ DS18X20
 #define CS_SD		10
+#define ADC_REG		A6
 
 // Initalisierung des LCDs mit den verwendeten Pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 
 Button button (17, 50, 800);
-uint8_t alarm[7] =
-  { 50, 90, 0, 1, 0, 1, 1 };
+
+Alarm alarm(&lcd);
 
 //----------------------------------------
 //DS18x20
@@ -140,8 +142,9 @@ void
 loop ()
 {
   button.check_button_state ();
-  if (button.button_pressed_long ())
+  if (button.button_press_long ())
     {
+      uint8_t j = 0;
       lcd.clear ();
       lcd.setCursor (0, 0);
       lcd.print (F("Alarm Einstellungen"));
@@ -149,22 +152,36 @@ loop ()
       lcd.print (F("Min:"));
       lcd.setCursor (4, 1);
       lcd.print (F("Max: aktiv.Sen.:"));
-      lcd.setCursor (0, 2);
-      lcd.print (alarm[0]);
-      lcd.setCursor (4, 2);
-      lcd.print (alarm[1]);
-      lcd.setCursor (7, 2);
-      for (byte i = 1; i < 7; i++)
+      alarm.lcdWerte ();
+      alarm.lcdCursorAn (j);
+      delay(1000);
+      while (j < 7)
 	{
-	  if (alarm[i + 1] == 1)
+	  button.check_button_state ();
+	  int adc = analogRead (ADC_REG);
+	  if (j < 2)
 	    {
-	      lcd.print ("T");
-	      lcd.print (i);
+	      alarm.Werte[j] = adc / 10.24;
 	    }
-	  else lcd.print ("n.");
-	  lcd.print (' ');
+	  else
+	    {
+	      if (adc > 600)
+		  alarm.Werte[j] = 1;
+	      else if (adc < 400)
+		  alarm.Werte[j] = 0;
+	    }
+	  alarm.lcdWert (j);
+	  if (button.button_pressed_short ())
+	    {
+	      alarm.lcdCursorAus (j);
+	      j++;
+	      if (j < 7)
+		{
+		alarm.lcdCursorAn (j);
+		}
+	    }
 	}
-      delay (6000);
+      delay (300);
     }
   if (tlcd.t_since_start () > LCDTIME)
     {
