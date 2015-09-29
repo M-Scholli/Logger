@@ -25,7 +25,7 @@
 // Initalisierung des LCDs mit den verwendeten Pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 
-Button button (17, 50, 800);
+Button button (17, 120, 800);
 
 Alarm alarm (&lcd);
 
@@ -40,13 +40,13 @@ OneWire ourWire (ONE_WIRE_BUS);
 DallasTemperature sensors (&ourWire);
 
 //DeviceAdressen der einzelnen DS18x20 Temperatursensoren
-DeviceAddress sensorenDs1820[SENSOR_NUM] =
+static DeviceAddress sensorenDs1820[SENSOR_NUM] =
   {
     { 0x28, 0xBA, 0xFA, 0x1C, 0x7, 0x0, 0x0, 0x9D },
     { 0x28, 0xC9, 0xFA, 0xF8, 0x4, 0x0, 0x0, 0xFF },
     { 0x28, 0x58, 0xE4, 0xF8, 0x4, 0x0, 0x0, 0xA7 }, };
 
-float temperaturen[4] =
+static float temperaturen[4] =
   { 0, 0, 0, 0 };
 
 //-----------------------------------------
@@ -56,7 +56,7 @@ float temperaturen[4] =
 RTC_DS1307 RTC;
 
 // nötig für SDFat für ein Erstellungsdatum des Sd Files
-void
+static void
 dateTime (uint16_t* date, uint16_t* time)
 {
   DateTime now = RTC.now ();
@@ -69,7 +69,7 @@ dateTime (uint16_t* date, uint16_t* time)
 }
 
 //Format für Datum Uhrzeit in der CSV Datei
-ostream&
+static ostream&
 operator << (ostream& os, DateTime& dt)
 {
   os << setfill ('0') << setw (2) << int (dt.day ()) ;
@@ -91,7 +91,7 @@ Timer tlcd;
 
 SdFat SD;
 ofstream dataFile;
-char buf[55];
+static char buf[55];
 
 //-----------------------------------------------------------------------------------------
 // Initialisierungen
@@ -231,7 +231,7 @@ TemperaturString (byte num, float temp)
   return s;
 }
 
-void
+static void
 TempsAuslesen (void)
 {
   temperaturen[0] = readTempFloat (ADCPIN);
@@ -241,7 +241,16 @@ TempsAuslesen (void)
     }
 }
 
-void
+static void
+KommaMachen ()
+{
+  for (uint8_t i = 19; i < 55; i++)
+    {
+      if ( buf[i] == '.')
+	buf[i] = ',';
+    }
+}
+static void
 AlarmMenue (void)
 {
   uint8_t j = 0;
@@ -285,7 +294,7 @@ AlarmMenue (void)
   lcd.clear ();
 }
 
-void
+static void
 lcdAlarm (void)
 {
   String smax = "";
@@ -334,7 +343,7 @@ lcdAlarm (void)
     }
 }
 
-void
+static void
 LcdTempAnzeige (void)
 {
   DateTime now = RTC.now (); // aktuelle Zeit abrufen
@@ -364,7 +373,7 @@ LcdTempAnzeige (void)
 
 // Schreibt die gesammelten Daten auf die Sd Karte
 // todo mit interupt timer aufrufen.
-void
+static void
 logSdKarte (void)
 {
   DateTime now = RTC.now (); // aktuelle Zeit abrufen
@@ -382,6 +391,7 @@ logSdKarte (void)
       bout << ';';
     }
   bout << endl;		//Zeilen Sprung am Ende der Zeile
+  KommaMachen();
   dataFile << buf << flush;	// Buffer auf die SD Karte schreiben
   Serial.print (buf);
   // Überprüfung ob das Schreiben erfolgreich war, bzw. die SD Karte noch vorhanden ist.
