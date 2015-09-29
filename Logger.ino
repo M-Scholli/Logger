@@ -15,17 +15,18 @@
 #include "Button.h"
 #include "Alarm.h"
 
-#define LOGTIME 	10000 	//Zeit zwischen den Messungen in ms;
+#define LOGTIME 	60000 	//Zeit zwischen den Messungen in ms;
 #define LCDTIME 	500	//Wiederholungszeit in ms zum aktualiseieren der Werte im LCD
 #define ADCPIN		A7	// Pin an dem der Temperatursensor 1 (0-10V) Adc angeschlossen ist
 #define SENSOR_NUM	3 	// Max. Anzahl Sensoren vom Typ DS18X20
 #define CS_SD		10
 #define ADC_REG		A6
+#define ADC_TOT		20	//Totwert des Reglers
 
 // Initalisierung des LCDs mit den verwendeten Pins
 LiquidCrystal lcd (2, 3, 4, 5, 6, 7, 8);
 
-Button button (17, 120, 800);
+Button button (17, 80, 800);
 
 Alarm alarm (&lcd);
 
@@ -250,10 +251,13 @@ KommaMachen ()
 	buf[i] = ',';
     }
 }
+
 static void
 AlarmMenue (void)
 {
+  int adcOld;
   uint8_t j = 0;
+  uint8_t k = 0;
   lcd.clear ();
   lcd.setCursor (0, 0);
   lcd.print (F("Alarm Einstellungen"));
@@ -263,27 +267,39 @@ AlarmMenue (void)
   lcd.print (F("Max: aktiv.Sen.:"));
   alarm.lcdWerte ();
   alarm.lcdCursorAn (j);
-  delay (1000);
+  adcOld = analogRead (ADC_REG);
+  delay (50);
   while (j < 6)
     {
+
       button.check_button_state ();
       int adc = analogRead (ADC_REG);
       if (j < 2)
 	{
-	  alarm.Werte[j] = adc / 10.24;
+	  if( adc > (adcOld + ADC_TOT) || adc < (adcOld - ADC_TOT) || k == 1 )
+	    {
+	    alarm.Werte[j] = adc / 10.24;
+	    k = 1;
+	    }
 	}
       else
 	{
-	  if (adc > 600)
-	    alarm.Werte[j] = 1;
-	  else if (adc < 400)
-	    alarm.Werte[j] = 0;
+	  if( adc > (adcOld + ADC_TOT) || adc < (adcOld - ADC_TOT) || k == 1 )
+	    {
+		  if (adc > 600)
+		    alarm.Werte[j] = 1;
+		  else if (adc < 400)
+		    alarm.Werte[j] = 0;
+		  k = 1;
+	    }
 	}
       alarm.lcdWert (j);
       if (button.button_pressed_short ())
 	{
 	  alarm.lcdCursorAus (j);
 	  j++;
+	  adcOld = adc;
+	  k = 0;
 	  if (j < 6)
 	    {
 	      alarm.lcdCursorAn (j);
@@ -294,6 +310,7 @@ AlarmMenue (void)
   lcd.clear ();
 }
 
+// todo anzeigen dass alarm aktiv und welche Sensoren
 static void
 lcdAlarm (void)
 {
