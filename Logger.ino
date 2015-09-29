@@ -72,7 +72,7 @@ dateTime (uint16_t* date, uint16_t* time)
 ostream&
 operator << (ostream& os, DateTime& dt)
 {
-  os << setfill (' ') << setw (2) << int (dt.day ()) ;
+  os << setfill ('0') << setw (2) << int (dt.day ()) ;
   os << '.' << setfill('0') << setw(2) << int (dt.month ());
   os << '.' << dt.year () << ';';
   os << int (dt.hour ()) << ':' << setfill ('0') << setw (2)
