@@ -308,6 +308,68 @@ AlarmMenue (void)
       delay (100);
     }
   lcd.clear ();
+
+  //Set time
+  uint8_t timeDigits[14] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,};
+  j = 0;
+  k = 0;
+  uint8_t cursor = 0;
+
+  lcd.clear ();
+  lcd.setCursor (0, 0);
+  lcd.print (F("Zeiteinstellungen:"));
+  lcd.setCursor (0, 1);
+  lcd.print (F("YYYY-MM-DD HH:MM:SS"));
+  adcOld = analogRead (ADC_REG);
+  delay (50);
+
+  //print default values
+  for(uint8_t i = 0; i < 14; i++)
+    {
+      if (cursor == 4 || cursor == 7 || cursor == 10 || cursor == 13 || cursor == 16) cursor++;	//skip spaces
+      lcd.setCursor(cursor, 2);
+      lcd.print(timeDigits[i]);
+      cursor++;
+    }
+  cursor = 0;
+  lcd.setCursor (0, 2);
+
+  while (j < 14)
+    {
+
+      button.check_button_state ();
+      int adc = analogRead (ADC_REG);
+      if( adc > (adcOld + ADC_TOT) || adc < (adcOld - ADC_TOT) || k == 1 )
+	{
+	timeDigits[j] = adc / 10.24;
+	k = 1;
+	}
+      lcd.print(timeDigits[j]);
+
+
+      if (button.button_pressed_short ())
+      {
+	j++;
+	cursor++;
+	if (cursor == 4 || cursor == 7 || cursor == 10 || cursor == 13 || cursor == 16) cursor++;	//skip spaces
+	lcd.setCursor (cursor, 2);
+	adcOld = adc;
+	k = 0;
+      }
+      delay (100);
+    }
+
+  //Save time
+  int year	= timeDigits[0] * 1000 + timeDigits[1] * 100 + timeDigits[2] * 10 + timeDigits[3];
+  int month	= timeDigits[4] * 10 + timeDigits[5];
+  int day	= timeDigits[6] * 10 + timeDigits[7];
+  int hour	= timeDigits[8] * 10 + timeDigits[9];
+  int minute	= timeDigits[10] * 10 + timeDigits[11];
+  int second	= timeDigits[12] * 10 + timeDigits[13];
+  RTC.adjust (DateTime (year, month, day, hour, minute, second));
+
+  lcd.clear ();
+
 }
 
 // todo anzeigen dass alarm aktiv und welche Sensoren
